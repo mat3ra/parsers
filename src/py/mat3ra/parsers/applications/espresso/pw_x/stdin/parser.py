@@ -30,6 +30,36 @@ class EspressoPwxStdinParser(BaseParser):
         self.namelist_regex_control = self.namelist_regex.replace("{{BLOCK_NAME}}", "CONTROL")
         self.namelist_regex_electrons = self.namelist_regex.replace("{{BLOCK_NAME}}", "ELECTRONS")
 
+    def get_namelist_as_dict(self, namelist_name: str) -> dict:
+        """
+        Extracts an entire namelist block and parses all key=value pairs into a dictionary.
+        This handles standard keys and Fortran arrays like celldm(N).
+        """
+        # Get the regex for the specific namelist block from schemas
+        block_regex_str = self.namelist_regex.replace("{{BLOCK_NAME}}", namelist_name.upper())
+        block_regex = re.compile(
+            block_regex_str.encode().decode("unicode_escape"),
+            regex_utils.convert_js_flags_to_python(self.namelist_flags),
+        )
+
+        # Extract the block content
+        match = block_regex.search(self.content)
+        if not match:
+            return {}
+
+        block_content = match.group(0)
+        result = {}
+
+        # Parse standard key=value pairs
+        for k, v in re.findall(r"(\w+)\s*=\s*([^,\n/=]+)", block_content):
+            result[k.strip().lower()] = v.strip()
+
+        # Parse Fortran array syntax (e.g., celldm(1)=10.0)
+        for n, v in re.findall(r"celldm\s*\(\s*(\d+)\s*\)\s*=\s*([^,\n/]+)", block_content, re.IGNORECASE):
+            result[f"celldm{n}"] = v.strip()
+
+        return result
+
     @staticmethod
     def get_value_from_namelist_by_key(namelist_content: str, namelist_name: str, key: str):
         regex_object = object_utils.get(SCHEMAS, EspressoPwxStdinParser.schema_path + f"{namelist_name}/{key}")
@@ -58,4 +88,18 @@ class EspressoPwxStdinParser(BaseParser):
             "calculation": _("calculation"),
             "title": _("title"),
             "restart_mode": _("restart_mode"),
+        }
+
+    @property
+    def namelists(self) -> dict:
+        """
+        Returns all standard Quantum Espresso namelists as a nested dictionary.
+        Usage: self.namelists['system']['ibrav']
+        """
+        return {
+            "control": self.get_namelist("CONTROL"),
+            "system": self.get_namelist("SYSTEM"),
+            "electrons": self.get_namelist("ELECTRONS"),
+            "ions": self.get_namelist("IONS"),
+            "cell": self.get_namelist("CELL"),
         }
