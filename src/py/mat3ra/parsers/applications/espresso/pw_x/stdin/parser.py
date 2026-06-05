@@ -1,4 +1,5 @@
 import re
+from typing import List, Optional, Tuple
 
 from mat3ra.parsers import BaseParser
 from mat3ra.regex.data.schemas import SCHEMAS
