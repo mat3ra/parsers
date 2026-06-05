@@ -4,6 +4,7 @@ from mat3ra.parsers import BaseParser
 from mat3ra.regex.data.schemas import SCHEMAS
 from mat3ra.utils import object as object_utils
 from mat3ra.utils import regex as regex_utils
+from mat3ra.utils.constants import COEFFICIENTS
 
 
 class EspressoPwxStdinParser(BaseParser):
@@ -103,3 +104,69 @@ class EspressoPwxStdinParser(BaseParser):
             "ions": self.get_namelist("IONS"),
             "cell": self.get_namelist("CELL"),
         }
+
+    def get_card_cell_parameters(self, celldm1_angstrom: Optional[float] = None) -> Optional[List[List[float]]]:
+        """
+        Parses the CELL_PARAMETERS card and converts units to Angstrom.
+        """
+        match = re.search(
+            r"CELL_PARAMETERS\s*[{(]?\s*(\w+)\s*[)}]?\s*\n"
+            r"((?:[ \t]*[-\d.eEdD+]+[ \t]+[-\d.eEdD+]+[ \t]+[-\d.eEdD+]+[ \t]*\n?){3})",
+            self.content,
+            re.IGNORECASE,
+        )
+        if not match:
+            return None  # Return None if card is missing (e.g., ibrav != 0)
+
+        units = match.group(1).lower()
+        rows = [list(map(float, line.split())) for line in match.group(2).strip().splitlines()]
+
+        if units == "bohr":
+            rows = [[v * COEFFICIENTS["BOHR_TO_ANGSTROM"] for v in row] for row in rows]
+        elif units == "alat":
+            if not celldm1_angstrom:
+                raise ValueError("alat units require celldm(1)")
+            rows = [[v * celldm1_angstrom for v in row] for row in rows]
+
+        return rows
+
+    def get_card_atomic_positions(
+        self, cell: List[List[float]], celldm1_angstrom: Optional[float] = None
+    ) -> Tuple[List[str], List[List[float]]]:
+        """
+        Parses the ATOMIC_POSITIONS card and converts coordinates to Cartesian Angstroms.
+        """
+        match = re.search(
+            r"ATOMIC_POSITIONS\s*[{(]?\s*(\w+)\s*[)}]?\s*\n"
+            r"((?:[ \t]*\w+[ \t]+[-\d.eEdD+]+[ \t]+[-\d.eEdD+]+[ \t]+[-\d.eEdD+]+.*\n?)+)",
+            self.content,
+            re.IGNORECASE,
+        )
+        if not match:
+            return [], []  # Or raise an error, depending on strictness
+
+        units = match.group(1).lower()
+        names, positions = [], []
+
+        for line in match.group(2).strip().splitlines():
+            parts = line.split()
+            if len(parts) < 4:
+                continue
+            symbol = parts[0]
+            coords = list(map(float, parts[1:4]))
+
+            if units == "crystal":
+                if not cell:
+                    raise ValueError("crystal units require a parsed cell to convert to Cartesian")
+                coords = [sum(coords[i] * cell[i][j] for i in range(3)) for j in range(3)]
+            elif units == "bohr":
+                coords = [v * COEFFICIENTS["BOHR_TO_ANGSTROM"] for v in coords]
+            elif units == "alat":
+                if not celldm1_angstrom:
+                    raise ValueError("alat units require celldm(1)")
+                coords = [v * celldm1_angstrom for v in coords]
+
+            names.append(symbol)
+            positions.append(coords)
+
+        return names, positions
