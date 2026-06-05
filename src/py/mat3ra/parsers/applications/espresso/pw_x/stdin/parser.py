@@ -37,19 +37,15 @@ class EspressoPwxStdinParser(BaseParser):
         Extracts an entire namelist block and parses all key=value pairs into a dictionary.
         This handles standard keys and Fortran arrays like celldm(N).
         """
-        # Get the regex for the specific namelist block from schemas
-        block_regex_str = self.namelist_regex.replace("{{BLOCK_NAME}}", namelist_name.upper())
-        block_regex = re.compile(
-            block_regex_str.encode().decode("unicode_escape"),
-            regex_utils.convert_js_flags_to_python(self.namelist_flags),
-        )
+        # Extract the block content using a robust boundary regex
+        # This safely captures everything between &NAME and / regardless of the keys inside
+        match = re.search(rf"&{namelist_name}\s*([\s\S]*?)\/", self.content, re.IGNORECASE)
 
-        # Extract the block content
-        match = block_regex.search(self.content)
         if not match:
             return {}
 
-        block_content = match.group(0)
+        # group(1) contains the internal block text, excluding the &NAME and /
+        block_content = match.group(1)
         result = {}
 
         # Parse standard key=value pairs
