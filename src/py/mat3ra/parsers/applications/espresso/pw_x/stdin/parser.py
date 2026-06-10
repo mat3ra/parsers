@@ -14,6 +14,7 @@ class EspressoPwxStdinParser(BaseParser):
     """
 
     schema_path = "/applications/espresso/5.2.1/pw.x/"
+    namelist_block_content_regex_path = "/primitives/ESPRESSO_NAMELIST_BLOCK_CONTENT"
 
     def __init__(self, content, version: str = "5.4.0"):
         """
@@ -31,15 +32,25 @@ class EspressoPwxStdinParser(BaseParser):
         self.namelist_flags = self.namelist_regex_object["flags"]
         self.namelist_regex_control = self.namelist_regex.replace("{{BLOCK_NAME}}", "CONTROL")
         self.namelist_regex_electrons = self.namelist_regex.replace("{{BLOCK_NAME}}", "ELECTRONS")
+        self.namelist_block_content_regex_object = object_utils.get(
+            SCHEMAS, EspressoPwxStdinParser.namelist_block_content_regex_path
+        )
 
-    def get_namelist_as_dict(self, namelist_name: str) -> dict:
+    def get_namelist(self, namelist_name: str) -> dict:
         """
         Extracts an entire namelist block and parses all key=value pairs into a dictionary.
-        This handles standard keys and Fortran arrays like celldm(N).
+        This handles standard keys and Fortran indexed arrays like celldm(N) or starting_magnetization(N).
         """
         # Extract the block content using a robust boundary regex
         # This safely captures everything between &NAME and / regardless of the keys inside
-        match = re.search(rf"&{namelist_name}\s*([\s\S]*?)\/", self.content, re.IGNORECASE)
+        namelist_block_regex = self.namelist_block_content_regex_object["regex"].replace(
+            "{{NAMELIST_NAME}}", namelist_name
+        )
+        match = re.search(
+            namelist_block_regex,
+            self.content,
+            regex_utils.convert_js_flags_to_python(self.namelist_block_content_regex_object["flags"]),
+        )
 
         if not match:
             return {}
@@ -52,9 +63,14 @@ class EspressoPwxStdinParser(BaseParser):
         for k, v in re.findall(r"(\w+)\s*=\s*([^,\n/=]+)", block_content):
             result[k.strip().lower()] = v.strip()
 
-        # Parse Fortran array syntax (e.g., celldm(1)=10.0)
-        for n, v in re.findall(r"celldm\s*\(\s*(\d+)\s*\)\s*=\s*([^,\n/]+)", block_content, re.IGNORECASE):
-            result[f"celldm{n}"] = v.strip()
+        # Parse Fortran indexed array syntax (e.g., celldm(1)=10.0, starting_magnetization(2)=0.5)
+        # Standard keys above cannot match these because '(' follows the name instead of '='.
+        for key, index, value in re.findall(
+            r"(\w+)\s*\(\s*(\d+)\s*\)\s*=\s*([^,\n/]+)",
+            block_content,
+            re.IGNORECASE,
+        ):
+            result[f"{key.strip().lower()}{index}"] = value.strip()
 
         return result
 
