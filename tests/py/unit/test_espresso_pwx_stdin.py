@@ -8,3 +8,19 @@ def test_espresso_pwx_stdin():
     namelist_control = parser.namelist_control
     calculation_value = namelist_control["calculation"]
     assert calculation_value == "scf"
+
+
+def test_get_namelist_parses_indexed_fortran_keys():
+    content = """
+&SYSTEM
+    ibrav = 1
+    celldm(1) = 15.9018255
+    starting_magnetization(2) = 0.5
+/
+"""
+    parser = EspressoPwxStdinParser(content=content)
+    system = parser.get_namelist("SYSTEM")
+
+    assert system["ibrav"] == "1"
+    assert system["celldm1"] == "15.9018255"
+    assert system["starting_magnetization2"] == "0.5"
