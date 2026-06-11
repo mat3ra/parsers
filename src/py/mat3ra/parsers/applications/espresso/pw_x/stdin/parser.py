@@ -13,8 +13,7 @@ class EspressoPwxStdinParser(BaseParser):
     Espresso PWX stdin parser class.
     """
 
-    schema_path = "/applications/espresso/5.2.1/pw.x/"
-    namelist_block_content_regex_path = "/primitives/ESPRESSO_NAMELIST_BLOCK_CONTENT"
+    schema_path = "/applications/espresso/"
 
     def __init__(self, content, version: str = "5.4.0"):
         """
@@ -33,7 +32,7 @@ class EspressoPwxStdinParser(BaseParser):
         self.namelist_regex_control = self.namelist_regex.replace("{{BLOCK_NAME}}", "CONTROL")
         self.namelist_regex_electrons = self.namelist_regex.replace("{{BLOCK_NAME}}", "ELECTRONS")
         self.namelist_block_content_regex_object = object_utils.get(
-            SCHEMAS, EspressoPwxStdinParser.namelist_block_content_regex_path
+            SCHEMAS, EspressoPwxStdinParser.schema_path + "_regex_dict/namelist_block"
         )
 
     def get_namelist(self, namelist_name: str) -> dict:
@@ -44,7 +43,7 @@ class EspressoPwxStdinParser(BaseParser):
         # Extract the block content using a robust boundary regex
         # This safely captures everything between &NAME and / regardless of the keys inside
         namelist_block_regex = self.namelist_block_content_regex_object["regex"].replace(
-            "{{NAMELIST_NAME}}", namelist_name
+            "{{BLOCK_NAME}}", namelist_name
         )
         match = re.search(
             namelist_block_regex,
