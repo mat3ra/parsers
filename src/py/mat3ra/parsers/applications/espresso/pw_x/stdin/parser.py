@@ -42,13 +42,10 @@ class EspressoPwxStdinParser(BaseParser):
         """
         # Extract the block content using a robust boundary regex
         # This safely captures everything between &NAME and / regardless of the keys inside
-        namelist_block_regex = self.namelist_block_content_regex_object["regex"].replace(
-            "{{BLOCK_NAME}}", namelist_name
-        )
-        match = re.search(
-            namelist_block_regex,
-            self.content,
-            regex_utils.convert_js_flags_to_python(self.namelist_block_content_regex_object["flags"]),
+        match = regex_utils.regex_search_by_schema(
+            content=self.content,
+            schema=self.namelist_block_content_regex_object,
+            param_replacements={"BLOCK_NAME": namelist_name},
         )
 
         if not match:
