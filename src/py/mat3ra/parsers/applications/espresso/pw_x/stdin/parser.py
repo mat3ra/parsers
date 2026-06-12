@@ -34,6 +34,12 @@ class EspressoPwxStdinParser(BaseParser):
         self.namelist_block_content_regex_object = object_utils.get(
             SCHEMAS, EspressoPwxStdinParser.schema_path + "_regex_dict/namelist_block"
         )
+        self.kv_pair_regex_object = object_utils.get(
+            SCHEMAS, EspressoPwxStdinParser.schema_path + "_regex_dict/kv_pair"
+        )
+        self.kv_pair_with_index_regex_object = object_utils.get(
+            SCHEMAS, EspressoPwxStdinParser.schema_path + "_regex_dict/kv_pair_with_index"
+        )
 
     def get_namelist(self, namelist_name: str) -> dict:
         """
@@ -55,18 +61,26 @@ class EspressoPwxStdinParser(BaseParser):
         block_content = match.group(1)
         result = {}
 
-        # Parse standard key=value pairs
-        for k, v in re.findall(r"(\w+)\s*=\s*([^,\n/=]+)", block_content):
-            result[k.strip().lower()] = v.strip()
-
-        # Parse Fortran indexed array syntax (e.g., celldm(1)=10.0, starting_magnetization(2)=0.5)
-        # Standard keys above cannot match these because '(' follows the name instead of '='.
-        for key, index, value in re.findall(
-            r"(\w+)\s*\(\s*(\d+)\s*\)\s*=\s*([^,\n/]+)",
-            block_content,
-            re.IGNORECASE,
+        # standard kv loop to read match objects instead of unpacking tuples
+        for kv_match in regex_utils.regex_search_by_schema(
+            content=block_content,
+            schema=self.kv_pair_regex_object,
+            find_all=True,
         ):
-            result[f"{key.strip().lower()}{index}"] = value.strip()
+            k = kv_match.group(1).strip().lower()
+            v = kv_match.group(2).strip()
+            result[k] = v
+
+        # indexed kv array loop to read match objects instead of unpacking tuples
+        for array_match in regex_utils.regex_search_by_schema(
+            content=block_content,
+            schema=self.kv_pair_with_index_regex_object,
+            find_all=True,
+        ):
+            key = array_match.group(1).strip().lower()
+            index = array_match.group(2).strip()
+            value = array_match.group(3).strip()
+            result[f"{key}{index}"] = value
 
         return result
 
