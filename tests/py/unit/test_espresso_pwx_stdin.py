@@ -5,8 +5,10 @@ from mat3ra.parsers.applications.espresso.pw_x.stdin.parser import EspressoPwxSt
 def test_espresso_pwx_stdin():
     file_content = get_content_by_reference_path("applications/espresso/v5.4.0/stdin")
     parser = EspressoPwxStdinParser(content=file_content)
-    namelist_control = parser.namelist_control
-    calculation_value = namelist_control["calculation"]
+
+    namelist_control = parser.namelists.get("control", {})
+    calculation_value = namelist_control.get("calculation")
+
     assert calculation_value == "scf"
 
 

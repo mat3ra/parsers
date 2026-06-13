@@ -24,13 +24,6 @@ class EspressoPwxStdinParser(BaseParser):
             version (str): file version.
         """
         super().__init__(content, version=version)
-        self.namelist_regex_object = object_utils.get(
-            SCHEMAS, EspressoPwxStdinParser.schema_path + "control/_format/namelist"
-        )
-        self.namelist_regex = self.namelist_regex_object["regex"]
-        self.namelist_flags = self.namelist_regex_object["flags"]
-        self.namelist_regex_control = self.namelist_regex.replace("{{BLOCK_NAME}}", "CONTROL")
-        self.namelist_regex_electrons = self.namelist_regex.replace("{{BLOCK_NAME}}", "ELECTRONS")
         self.namelist_block_content_regex_object = object_utils.get(
             SCHEMAS, EspressoPwxStdinParser.schema_path + "_regex_dict/namelist_block"
         )
@@ -40,79 +33,53 @@ class EspressoPwxStdinParser(BaseParser):
         self.kv_pair_with_index_regex_object = object_utils.get(
             SCHEMAS, EspressoPwxStdinParser.schema_path + "_regex_dict/kv_pair_with_index"
         )
+        self.cell_parameters_card_regex_object = object_utils.get(
+            SCHEMAS, EspressoPwxStdinParser.schema_path + "_regex_dict/cell_parameters_card"
+        )
 
     def get_namelist(self, namelist_name: str) -> dict:
         """
         Extracts an entire namelist block and parses all key=value pairs into a dictionary.
         This handles standard keys and Fortran indexed arrays like celldm(N) or starting_magnetization(N).
         """
-        # Extract the block content using a robust boundary regex
-        # This safely captures everything between &NAME and / regardless of the keys inside
-        match = regex_utils.regex_search_by_schema(
+        matches = regex_utils.regex_search_by_schema(
             content=self.content,
             schema=self.namelist_block_content_regex_object,
-            param_replacements={"BLOCK_NAME": namelist_name},
+            find_all=True
         )
 
-        if not match:
+        block_content = None
+        for match in matches:
+            # Group 1 captures the block name (e.g., "CONTROL" or "SYSTEM") from the build-time OR-group
+            if match.group(1).upper() == namelist_name.upper():
+                block_content = match.group(2) # Group 2 contains the body content
+                break
+
+        if not block_content:
             return {}
 
-        # group(1) contains the internal block text, excluding the &NAME and /
-        block_content = match.group(1)
         result = {}
 
-        # standard kv loop to read match objects instead of unpacking tuples
+        # Parse standard KVs
         for kv_match in regex_utils.regex_search_by_schema(
-            content=block_content,
-            schema=self.kv_pair_regex_object,
-            find_all=True,
+            content=block_content, schema=self.kv_pair_regex_object, find_all=True
         ):
             k = kv_match.group(1).strip().lower()
-            v = kv_match.group(2).strip()
+            # Strip whitespace, then strip surrounding single/double quotes
+            v = kv_match.group(2).strip().strip("'\"")
             result[k] = v
 
-        # indexed kv array loop to read match objects instead of unpacking tuples
+        # Parse indexed array KVs
         for array_match in regex_utils.regex_search_by_schema(
-            content=block_content,
-            schema=self.kv_pair_with_index_regex_object,
-            find_all=True,
+            content=block_content, schema=self.kv_pair_with_index_regex_object, find_all=True
         ):
             key = array_match.group(1).strip().lower()
             index = array_match.group(2).strip()
-            value = array_match.group(3).strip()
+            # Strip whitespace, then strip surrounding single/double quotes
+            value = array_match.group(3).strip().strip("'\"")
             result[f"{key}{index}"] = value
 
         return result
-
-    @staticmethod
-    def get_value_from_namelist_by_key(namelist_content: str, namelist_name: str, key: str):
-        regex_object = object_utils.get(SCHEMAS, EspressoPwxStdinParser.schema_path + f"{namelist_name}/{key}")
-        regex = re.compile(
-            regex_object["regex"],
-            regex_utils.convert_js_flags_to_python(regex_object["flags"]),
-        )
-        matches = list(regex.finditer(namelist_content))
-        line, value = (None, None)
-        if len(matches) > 0:
-            line, value = matches[0].group(0), matches[0].group(1)
-        return line, value
-
-    @property
-    def namelist_control(self):
-        control_block_regex = re.compile(
-            self.namelist_regex_control.encode().decode("unicode_escape"),
-            regex_utils.convert_js_flags_to_python(self.namelist_flags),
-        )
-        control_blocks_match = control_block_regex.match(self.content)
-        control_block = control_blocks_match[0] if control_blocks_match else None
-
-        _ = lambda x: self.get_value_from_namelist_by_key(control_block, "control", x)[1]  # noqa
-
-        return {
-            "calculation": _("calculation"),
-            "title": _("title"),
-            "restart_mode": _("restart_mode"),
-        }
 
     @property
     def namelists(self) -> dict:
@@ -132,16 +99,15 @@ class EspressoPwxStdinParser(BaseParser):
         """
         Parses the CELL_PARAMETERS card and converts units to Angstrom.
         """
-        match = re.search(
-            r"CELL_PARAMETERS\s*[{(]?\s*(\w+)\s*[)}]?\s*\n"
-            r"((?:[ \t]*[-\d.eEdD+]+[ \t]+[-\d.eEdD+]+[ \t]+[-\d.eEdD+]+[ \t]*\n?){3})",
-            self.content,
-            re.IGNORECASE,
+        match = regex_utils.regex_search_by_schema(
+            content=self.content, schema=self.cell_parameters_card_regex_object
         )
-        if not match:
-            return None  # Return None if card is missing (e.g., ibrav != 0)
 
-        units = match.group(1).lower()
+        if not match:
+            return None
+
+        # match.group(1) safely captures the unit (alat, bohr, or angstrom) due to the build-time replacement
+        units = match.group(1).lower() if match.group(1) else "alat"
         rows = [list(map(float, line.split())) for line in match.group(2).strip().splitlines()]
 
         if units == "bohr":
@@ -166,7 +132,7 @@ class EspressoPwxStdinParser(BaseParser):
             re.IGNORECASE,
         )
         if not match:
-            return [], []  # Or raise an error, depending on strictness
+            return [], []
 
         units = match.group(1).lower()
         names, positions = [], []
