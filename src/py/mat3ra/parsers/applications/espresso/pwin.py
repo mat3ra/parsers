@@ -8,7 +8,7 @@ from mat3ra.utils import regex as regex_utils
 from mat3ra.utils.constants import COEFFICIENTS
 
 
-class EspressoPwxStdinParser(BaseParser):
+class EspressoPwinParser(BaseParser):
     """
     Espresso PWX stdin parser class.
     """
@@ -25,16 +25,16 @@ class EspressoPwxStdinParser(BaseParser):
         """
         super().__init__(content, version=version)
         self.namelist_block_content_regex_object = object_utils.get(
-            SCHEMAS, EspressoPwxStdinParser.schema_path + "_regex_dict/namelist_block"
+            SCHEMAS, EspressoPwinParser.schema_path + "_regex_dict/namelist_block"
         )
         self.kv_pair_regex_object = object_utils.get(
-            SCHEMAS, EspressoPwxStdinParser.schema_path + "_regex_dict/kv_pair"
+            SCHEMAS, EspressoPwinParser.schema_path + "_regex_dict/kv_pair"
         )
         self.kv_pair_with_index_regex_object = object_utils.get(
-            SCHEMAS, EspressoPwxStdinParser.schema_path + "_regex_dict/kv_pair_with_index"
+            SCHEMAS, EspressoPwinParser.schema_path + "_regex_dict/kv_pair_with_index"
         )
         self.cell_parameters_card_regex_object = object_utils.get(
-            SCHEMAS, EspressoPwxStdinParser.schema_path + "_regex_dict/cell_parameters_card"
+            SCHEMAS, EspressoPwinParser.schema_path + "_regex_dict/cell_parameters_card"
         )
 
     def get_namelist(self, namelist_name: str) -> dict:
