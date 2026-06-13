@@ -87,13 +87,30 @@ class EspressoPwxStdinParser(BaseParser):
         Returns all standard Quantum Espresso namelists as a nested dictionary.
         Usage: self.namelists['system']['ibrav']
         """
-        return {
+        result = {
             "control": self.get_namelist("CONTROL"),
             "system": self.get_namelist("SYSTEM"),
             "electrons": self.get_namelist("ELECTRONS"),
-            "ions": self.get_namelist("IONS"),
-            "cell": self.get_namelist("CELL"),
         }
+
+        # Add optional namelists only if they are found and have content
+        ions = self.get_namelist("IONS")
+        if ions:
+            result["ions"] = ions
+
+        cell = self.get_namelist("CELL")
+        if cell:
+            result["cell"] = cell
+
+        fcp = self.get_namelist("FCP")
+        if fcp:
+            result["fcp"] = fcp
+
+        rism = self.get_namelist("RISM")
+        if rism:
+            result["rism"] = rism
+
+        return result
 
     def get_card_cell_parameters(self, celldm1_angstrom: Optional[float] = None) -> Optional[List[List[float]]]:
         """

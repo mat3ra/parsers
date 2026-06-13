@@ -17,7 +17,7 @@ classifiers = [
 dependencies = [
     # add requirements here
     "numpy",
-    "mat3ra-utils @ git+https://github.com/exabyte-io/utils.git@c88d62c22bbd4203875183194677af03476e0f1a",
+    "mat3ra-utils @ git+https://github.com/exabyte-io/utils.git@01b7a69314fac1b6202d9263089c6962dadc85fb",
     "mat3ra-regex @ git+https://github.com/exabyte-io/regex.git@1f9deda123817861e3700a653dbb1e95c627db28",
     "mat3ra-fixtures",
     "pymatgen",
