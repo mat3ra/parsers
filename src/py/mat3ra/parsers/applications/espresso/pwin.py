@@ -1,4 +1,3 @@
-import re
 from typing import List, Optional, Tuple
 
 from mat3ra.parsers import BaseParser
