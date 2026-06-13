@@ -12,8 +12,6 @@ class EspressoPwinParser(BaseParser):
     Espresso PWX stdin parser class.
     """
 
-    schema_path = "/applications/espresso/"
-
     def __init__(self, content, version: str = "5.4.0"):
         """
         Constructor.
@@ -23,21 +21,14 @@ class EspressoPwinParser(BaseParser):
             version (str): file version.
         """
         super().__init__(content, version=version)
-        self.namelist_block_content_regex_object = object_utils.get(
-            SCHEMAS, EspressoPwinParser.schema_path + "_regex_dict/namelist_block"
-        )
-        self.kv_pair_regex_object = object_utils.get(
-            SCHEMAS, EspressoPwinParser.schema_path + "_regex_dict/kv_pair"
-        )
-        self.kv_pair_with_index_regex_object = object_utils.get(
-            SCHEMAS, EspressoPwinParser.schema_path + "_regex_dict/kv_pair_with_index"
-        )
-        self.cell_parameters_card_regex_object = object_utils.get(
-            SCHEMAS, EspressoPwinParser.schema_path + "_regex_dict/cell_parameters_card"
-        )
-        self.atomic_positions_card_regex_object = object_utils.get(
-            SCHEMAS, EspressoPwinParser.schema_path + "_regex_dict/atomic_positions_card"
-        )
+
+        regex_dict = object_utils.get(SCHEMAS, "/applications/espresso/_regex_dict") or {}
+
+        self.namelist_block_content_regex_object = regex_dict.get("namelist_block")
+        self.kv_pair_regex_object = regex_dict.get("kv_pair")
+        self.kv_pair_with_index_regex_object = regex_dict.get("kv_pair_with_index")
+        self.cell_parameters_card_regex_object = regex_dict.get("cell_parameters_card")
+        self.atomic_positions_card_regex_object = regex_dict.get("atomic_positions_card")
 
     def get_namelist(self, namelist_name: str) -> dict:
         """
@@ -45,16 +36,14 @@ class EspressoPwinParser(BaseParser):
         This handles standard keys and Fortran indexed arrays like celldm(N) or starting_magnetization(N).
         """
         matches = regex_utils.regex_search_by_schema(
-            content=self.content,
-            schema=self.namelist_block_content_regex_object,
-            find_all=True
+            content=self.content, schema=self.namelist_block_content_regex_object, find_all=True
         )
 
         block_content = None
         for match in matches:
             # Group 1 captures the block name (e.g., "CONTROL" or "SYSTEM") from the build-time OR-group
             if match.group(1).upper() == namelist_name.upper():
-                block_content = match.group(2) # Group 2 contains the body content
+                block_content = match.group(2)  # Group 2 contains the body content
                 break
 
         if not block_content:
@@ -118,9 +107,7 @@ class EspressoPwinParser(BaseParser):
         """
         Parses the CELL_PARAMETERS card and converts units to Angstrom.
         """
-        match = regex_utils.regex_search_by_schema(
-            content=self.content, schema=self.cell_parameters_card_regex_object
-        )
+        match = regex_utils.regex_search_by_schema(content=self.content, schema=self.cell_parameters_card_regex_object)
 
         if not match:
             return None
