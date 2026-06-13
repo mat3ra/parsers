@@ -18,7 +18,7 @@ dependencies = [
     # add requirements here
     "numpy",
     "mat3ra-utils @ git+https://github.com/exabyte-io/utils.git@01b7a69314fac1b6202d9263089c6962dadc85fb",
-    "mat3ra-regex @ git+https://github.com/exabyte-io/regex.git@6c0ea753cd02f76b3bc0dd17a983a922135bd3c6",
+    "mat3ra-regex @ git+https://github.com/exabyte-io/regex.git@afbe476e24e55ddcaeccad2b86d6077d60680081",
     "mat3ra-fixtures",
     "pymatgen",
 ]
