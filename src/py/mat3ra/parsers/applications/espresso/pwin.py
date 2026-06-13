@@ -36,6 +36,9 @@ class EspressoPwinParser(BaseParser):
         self.cell_parameters_card_regex_object = object_utils.get(
             SCHEMAS, EspressoPwinParser.schema_path + "_regex_dict/cell_parameters_card"
         )
+        self.atomic_positions_card_regex_object = object_utils.get(
+            SCHEMAS, EspressoPwinParser.schema_path + "_regex_dict/atomic_positions_card"
+        )
 
     def get_namelist(self, namelist_name: str) -> dict:
         """
@@ -142,16 +145,13 @@ class EspressoPwinParser(BaseParser):
         """
         Parses the ATOMIC_POSITIONS card and converts coordinates to Cartesian Angstroms.
         """
-        match = re.search(
-            r"ATOMIC_POSITIONS\s*[{(]?\s*(\w+)\s*[)}]?\s*\n"
-            r"((?:[ \t]*\w+[ \t]+[-\d.eEdD+]+[ \t]+[-\d.eEdD+]+[ \t]+[-\d.eEdD+]+.*\n?)+)",
-            self.content,
-            re.IGNORECASE,
+        match = regex_utils.regex_search_by_schema(
+            content=self.content, schema=self.atomic_positions_card_regex_object
         )
         if not match:
             return [], []
 
-        units = match.group(1).lower()
+        units = match.group(1).lower() if match.group(1) else "alat"
         names, positions = [], []
 
         for line in match.group(2).strip().splitlines():
@@ -161,7 +161,7 @@ class EspressoPwinParser(BaseParser):
             symbol = parts[0]
             coords = list(map(float, parts[1:4]))
 
-            if units == "crystal":
+            if units in ["crystal", "crystal_sg"]:
                 if not cell:
                     raise ValueError("crystal units require a parsed cell to convert to Cartesian")
                 coords = [sum(coords[i] * cell[i][j] for i in range(3)) for j in range(3)]
