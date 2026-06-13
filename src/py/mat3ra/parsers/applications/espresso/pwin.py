@@ -22,7 +22,7 @@ class EspressoPwinParser(BaseParser):
         """
         super().__init__(content, version=version)
 
-        regex_dict = object_utils.get(SCHEMAS, "/applications/espresso") or {}
+        regex_dict = object_utils.get(SCHEMAS, "/applications/espresso/pwin") or {}
 
         self.namelist_block_content_regex_object = regex_dict.get("namelist_block")
         self.kv_pair_regex_object = regex_dict.get("kv_pair")
