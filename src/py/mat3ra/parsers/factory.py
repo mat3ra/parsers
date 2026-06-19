@@ -7,6 +7,6 @@ class ParserFactory(factory.BaseFactory):
     """
 
     __class_registry__ = {
-        "applications.espresso.pwin": "mat3ra.parsers.applications.espresso.pwin.EspressoPwinParser",
+        "applications.espresso.pw_x.stdin": "mat3ra.parsers.applications.espresso.pw_x.stdin.parser.EspressoPwxStdinParser",
         "applications.vasp.stdin": "mat3ra.parsers.applications.vasp.VASPStdinParser",
     }

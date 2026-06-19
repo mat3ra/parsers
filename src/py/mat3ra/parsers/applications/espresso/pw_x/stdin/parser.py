@@ -7,10 +7,12 @@ from mat3ra.utils import regex as regex_utils
 from mat3ra.utils.constants import COEFFICIENTS
 
 
-class EspressoPwinParser(BaseParser):
+class EspressoPwxStdinParser(BaseParser):
     """
     Espresso PWX stdin parser class.
     """
+
+    schema_path = "/applications/espresso/5.2.1/pw.x"
 
     def __init__(self, content, version: str = "5.4.0"):
         """
@@ -22,7 +24,7 @@ class EspressoPwinParser(BaseParser):
         """
         super().__init__(content, version=version)
 
-        regex_dict = object_utils.get(SCHEMAS, "/applications/espresso/pwin") or {}
+        regex_dict = object_utils.get(SCHEMAS, EspressoPwxStdinParser.schema_path) or {}
 
         self.namelist_block_content_regex_object = regex_dict.get("namelist_block")
         self.kv_pair_regex_object = regex_dict.get("kv_pair")
