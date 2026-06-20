@@ -12,7 +12,7 @@ class EspressoPwxStdinParser(BaseParser):
     Espresso PWX stdin parser class.
     """
 
-    schema_path = "/applications/espresso/5.2.1/pw.x"
+    schema_path = "/applications/espresso/5.2.1/pw.x/stdin"
 
     def __init__(self, content, version: str = "5.4.0"):
         """
