@@ -30,6 +30,7 @@ class EspressoPwxStdinParser(BaseParser):
         self.kv_pair_regex_object = regex_dict.get("kv_pair")
         self.kv_pair_with_index_regex_object = regex_dict.get("kv_pair_with_index")
         self.cell_parameters_card_regex_object = regex_dict.get("cell_parameters_card")
+        self.cell_parameters_row_regex_object = regex_dict.get("cell_parameters_row")
         self.atomic_positions_card_regex_object = regex_dict.get("atomic_positions_card")
         self.atomic_positions_row_regex_object = regex_dict.get("atomic_positions_row")
 
@@ -117,7 +118,14 @@ class EspressoPwxStdinParser(BaseParser):
 
         # match.group(1) safely captures the unit (alat, bohr, or angstrom) due to the build-time replacement
         units = match.group(1).lower() if match.group(1) else "alat"
-        rows = [list(map(float, line.split())) for line in match.group(2).strip().splitlines()]
+        rows = []
+        for row_match in regex_utils.regex_search_by_schema(
+            content=match.group(2),
+            schema=self.cell_parameters_row_regex_object,
+            find_all=True,
+        ):
+            row = row_match.groupdict()
+            rows.append([float(row[c]) for c in ("x", "y", "z")])
 
         if units == "bohr":
             rows = [[v * COEFFICIENTS["BOHR_TO_ANGSTROM"] for v in row] for row in rows]
