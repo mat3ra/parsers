@@ -31,6 +31,7 @@ class EspressoPwxStdinParser(BaseParser):
         self.kv_pair_with_index_regex_object = regex_dict.get("kv_pair_with_index")
         self.cell_parameters_card_regex_object = regex_dict.get("cell_parameters_card")
         self.atomic_positions_card_regex_object = regex_dict.get("atomic_positions_card")
+        self.atomic_positions_row_regex_object = regex_dict.get("atomic_positions_row")
 
     def get_namelist(self, namelist_name: str) -> dict:
         """
@@ -142,12 +143,14 @@ class EspressoPwxStdinParser(BaseParser):
         units = match.group(1).lower() if match.group(1) else "alat"
         names, positions = [], []
 
-        for line in match.group(2).strip().splitlines():
-            parts = line.split()
-            if len(parts) < 4:
-                continue
-            symbol = parts[0]
-            coords = list(map(float, parts[1:4]))
+        for row_match in regex_utils.regex_search_by_schema(
+            content=match.group(2),
+            schema=self.atomic_positions_row_regex_object,
+            find_all=True,
+        ):
+            row = row_match.groupdict()
+            symbol = row["symbol"]
+            coords = [float(row[c]) for c in ("x", "y", "z")]
 
             if units in ["crystal", "crystal_sg"]:
                 if not cell:
