@@ -39,14 +39,9 @@ class EspressoPwxStdinParser(BaseParser):
         # Dynamically replace (CONTROL) with the requested namelist_name (e.g., IONS, SYSTEM)
         block_regex_string = base_format_obj["regex"].replace("(CONTROL)", f"({namelist_name.upper()})")
 
-        custom_schema = {
-            "regex": block_regex_string,
-            "flags": base_format_obj.get("flags", [])
-        }
+        custom_schema = {"regex": block_regex_string, "flags": base_format_obj.get("flags", [])}
 
-        matches = list(regex_utils.regex_search_by_schema(
-            content=self.content, schema=custom_schema, find_all=True
-        ))
+        matches = list(regex_utils.regex_search_by_schema(content=self.content, schema=custom_schema, find_all=True))
 
         if not matches:
             return {}
@@ -112,7 +107,9 @@ class EspressoPwxStdinParser(BaseParser):
         """
         Parses the CELL_PARAMETERS card and converts units to Angstrom.
         """
-        match = regex_utils.regex_search_by_schema(content=self.content, schema=self.stdin_schema.get("cell_parameters_card"))
+        match = regex_utils.regex_search_by_schema(
+            content=self.content, schema=self.stdin_schema.get("cell_parameters_card")
+        )
 
         if not match:
             return None
