@@ -23,6 +23,8 @@ class EspressoPwxStdinParser(BaseParser):
             version (str): file version.
         """
         super().__init__(content, version=version)
+
+        # Store the full dictionaries on the instance
         self.stdin_schema = object_utils.get(SCHEMAS, self.schema_path) or {}
         self.partials_schema = object_utils.get(SCHEMAS, "/applications/espresso/partials") or {}
 
@@ -31,17 +33,14 @@ class EspressoPwxStdinParser(BaseParser):
         Extracts an entire namelist block and parses all key=value pairs into a dictionary.
         This handles standard keys and Fortran indexed arrays like celldm(N) or starting_magnetization(N).
         """
-        # Fetch the flattened control/_format to use as a generic blueprint
-        base_format_obj = object_utils.get(SCHEMAS, f"{self.schema_path}/control/_format")
-        if not base_format_obj:
+        # Fetch the specific block schema directly by name (e.g., "control", "system")
+        namelist_schema = self.stdin_schema.get(namelist_name.lower(), {})
+        format_schema = namelist_schema.get("_format")
+
+        if not format_schema:
             return {}
 
-        # Dynamically replace (CONTROL) with the requested namelist_name (e.g., IONS, SYSTEM)
-        block_regex_string = base_format_obj["regex"].replace("(CONTROL)", f"({namelist_name.upper()})")
-
-        custom_schema = {"regex": block_regex_string, "flags": base_format_obj.get("flags", [])}
-
-        matches = list(regex_utils.regex_search_by_schema(content=self.content, schema=custom_schema, find_all=True))
+        matches = list(regex_utils.regex_search_by_schema(content=self.content, schema=format_schema, find_all=True))
 
         if not matches:
             return {}
@@ -78,30 +77,11 @@ class EspressoPwxStdinParser(BaseParser):
         Returns all standard Quantum Espresso namelists as a nested dictionary.
         Usage: self.namelists['system']['ibrav']
         """
-        result = {
-            "control": self.get_namelist("CONTROL"),
-            "system": self.get_namelist("SYSTEM"),
-            "electrons": self.get_namelist("ELECTRONS"),
+        return {
+            "control": self.get_namelist("control"),
+            "system": self.get_namelist("system"),
+            "electrons": self.get_namelist("electrons"),
         }
-
-        # Add optional namelists only if they are found and have content
-        ions = self.get_namelist("IONS")
-        if ions:
-            result["ions"] = ions
-
-        cell = self.get_namelist("CELL")
-        if cell:
-            result["cell"] = cell
-
-        fcp = self.get_namelist("FCP")
-        if fcp:
-            result["fcp"] = fcp
-
-        rism = self.get_namelist("RISM")
-        if rism:
-            result["rism"] = rism
-
-        return result
 
     def get_card_cell_parameters(self, celldm1_angstrom: Optional[float] = None) -> Optional[List[List[float]]]:
         """
@@ -114,7 +94,7 @@ class EspressoPwxStdinParser(BaseParser):
         if not match:
             return None
 
-        # match.group(1) safely captures the unit (alat, bohr, or angstrom) due to the build-time replacement
+        # match.group(1) captures the unit (alat, bohr, or angstrom)
         units = match.group(1).lower() if match.group(1) else "alat"
         rows = []
         for row_match in regex_utils.regex_search_by_schema(
