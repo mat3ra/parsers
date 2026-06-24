@@ -23,17 +23,8 @@ class EspressoPwxStdinParser(BaseParser):
             version (str): file version.
         """
         super().__init__(content, version=version)
-
-        regex_dict = object_utils.get(SCHEMAS, EspressoPwxStdinParser.schema_path) or {}
-        partials_dict = object_utils.get(SCHEMAS, "/applications/espresso/partials") or {}
-
-        self.cell_parameters_card_regex_object = regex_dict.get("cell_parameters_card")
-        self.atomic_positions_card_regex_object = regex_dict.get("atomic_positions_card")
-
-        self.kv_pair_regex_object = partials_dict.get("kv_pair")
-        self.kv_pair_with_index_regex_object = partials_dict.get("kv_pair_with_index")
-        self.cell_parameters_row_regex_object = partials_dict.get("cell_parameters_row")
-        self.atomic_positions_row_regex_object = partials_dict.get("atomic_positions_row")
+        self.stdin_schema = object_utils.get(SCHEMAS, self.schema_path) or {}
+        self.partials_schema = object_utils.get(SCHEMAS, "/applications/espresso/partials") or {}
 
     def get_namelist(self, namelist_name: str) -> dict:
         """
@@ -42,6 +33,8 @@ class EspressoPwxStdinParser(BaseParser):
         """
         # Fetch the flattened control/_format to use as a generic blueprint
         base_format_obj = object_utils.get(SCHEMAS, f"{self.schema_path}/control/_format")
+        if not base_format_obj:
+            return {}
 
         # Dynamically replace (CONTROL) with the requested namelist_name (e.g., IONS, SYSTEM)
         block_regex_string = base_format_obj["regex"].replace("(CONTROL)", f"({namelist_name.upper()})")
@@ -65,7 +58,7 @@ class EspressoPwxStdinParser(BaseParser):
 
         # Parse standard KVs
         for kv_match in regex_utils.regex_search_by_schema(
-            content=block_content, schema=self.kv_pair_regex_object, find_all=True
+            content=block_content, schema=self.partials_schema.get("kv_pair"), find_all=True
         ):
             k = kv_match.group(1).strip().lower()
             # Strip whitespace, then strip surrounding single/double quotes
@@ -74,7 +67,7 @@ class EspressoPwxStdinParser(BaseParser):
 
         # Parse indexed array KVs
         for array_match in regex_utils.regex_search_by_schema(
-            content=block_content, schema=self.kv_pair_with_index_regex_object, find_all=True
+            content=block_content, schema=self.partials_schema.get("kv_pair_with_index"), find_all=True
         ):
             key = array_match.group(1).strip().lower()
             index = array_match.group(2).strip()
@@ -119,7 +112,7 @@ class EspressoPwxStdinParser(BaseParser):
         """
         Parses the CELL_PARAMETERS card and converts units to Angstrom.
         """
-        match = regex_utils.regex_search_by_schema(content=self.content, schema=self.cell_parameters_card_regex_object)
+        match = regex_utils.regex_search_by_schema(content=self.content, schema=self.stdin_schema.get("cell_parameters_card"))
 
         if not match:
             return None
@@ -129,7 +122,7 @@ class EspressoPwxStdinParser(BaseParser):
         rows = []
         for row_match in regex_utils.regex_search_by_schema(
             content=match.group(2),
-            schema=self.cell_parameters_row_regex_object,
+            schema=self.partials_schema.get("cell_parameters_row"),
             find_all=True,
         ):
             row = row_match.groupdict()
@@ -151,7 +144,7 @@ class EspressoPwxStdinParser(BaseParser):
         Parses the ATOMIC_POSITIONS card and converts coordinates to Cartesian Angstroms.
         """
         match = regex_utils.regex_search_by_schema(
-            content=self.content, schema=self.atomic_positions_card_regex_object
+            content=self.content, schema=self.stdin_schema.get("atomic_positions_card")
         )
         if not match:
             return [], []
@@ -161,7 +154,7 @@ class EspressoPwxStdinParser(BaseParser):
 
         for row_match in regex_utils.regex_search_by_schema(
             content=match.group(2),
-            schema=self.atomic_positions_row_regex_object,
+            schema=self.partials_schema.get("atomic_positions_row"),
             find_all=True,
         ):
             row = row_match.groupdict()
