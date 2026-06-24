@@ -20,11 +20,9 @@ class EspressoPwxStdinParser(BaseParser):
 
         Args:
             content (str): file content.
-            version (str): file version.
+            version (str): Quantum ESPRESSO version.
         """
         super().__init__(content, version=version)
-
-        # Store the full dictionaries on the instance
         self.stdin_schema = object_utils.get(SCHEMAS, self.schema_path) or {}
         self.partials_schema = object_utils.get(SCHEMAS, "/applications/espresso/partials") or {}
 
@@ -33,59 +31,45 @@ class EspressoPwxStdinParser(BaseParser):
         Extracts an entire namelist block and parses all key=value pairs into a dictionary.
         This handles standard keys and Fortran indexed arrays like celldm(N) or starting_magnetization(N).
         """
-        # Fetch the specific block schema directly by name (e.g., "control", "system")
-        namelist_schema = self.stdin_schema.get(namelist_name.lower(), {})
-        format_schema = namelist_schema.get("_format")
+        namelist_schema = self.stdin_schema.get(namelist_name.lower(), {}).get("_format")
 
-        if not format_schema:
-            return {}
-
-        matches = list(regex_utils.regex_search_by_schema(content=self.content, schema=format_schema, find_all=True))
+        matches = list(regex_utils.regex_search_by_schema(content=self.content, schema=namelist_schema, find_all=True))
 
         if not matches:
             return {}
 
-        # Group 0 is the full matched string of the isolated block
         block_content = matches[0].group(0)
-
         result = {}
 
-        # Parse standard KVs
         for kv_match in regex_utils.regex_search_by_schema(
             content=block_content, schema=self.partials_schema.get("kv_pair"), find_all=True
         ):
             k = kv_match.group(1).strip().lower()
-            # Strip whitespace, then strip surrounding single/double quotes
             v = kv_match.group(2).strip().strip("'\"")
             result[k] = v
 
-        # Parse indexed array KVs
         for array_match in regex_utils.regex_search_by_schema(
             content=block_content, schema=self.partials_schema.get("kv_pair_with_index"), find_all=True
         ):
             key = array_match.group(1).strip().lower()
             index = array_match.group(2).strip()
-            # Strip whitespace, then strip surrounding single/double quotes
             value = array_match.group(3).strip().strip("'\"")
             result[f"{key}{index}"] = value
 
         return result
 
     @property
-    def namelists(self) -> dict:
+    def celldm1_angstrom(self) -> Optional[float]:
         """
-        Returns all standard Quantum Espresso namelists as a nested dictionary.
-        Usage: self.namelists['system']['ibrav']
+        Helper property to extract celldm(1) from the SYSTEM namelist and convert it to Angstroms.
         """
-        return {
-            "control": self.get_namelist("control"),
-            "system": self.get_namelist("system"),
-            "electrons": self.get_namelist("electrons"),
-        }
+        system_nl = self.get_namelist("system")
+        celldm1_bohr = system_nl.get("celldm1")
+        return float(celldm1_bohr) * COEFFICIENTS["BOHR_TO_ANGSTROM"] if celldm1_bohr else None
 
-    def get_card_cell_parameters(self, celldm1_angstrom: Optional[float] = None) -> Optional[List[List[float]]]:
+    def get_card_cell_parameters(self) -> Optional[List[List[float]]]:
         """
-        Parses the CELL_PARAMETERS card and converts units to Angstrom.
+        Parses the CELL_PARAMETERS card and converts coordinates to Cartesian Angstroms.
         """
         match = regex_utils.regex_search_by_schema(
             content=self.content, schema=self.stdin_schema.get("cell_parameters_card")
@@ -94,7 +78,6 @@ class EspressoPwxStdinParser(BaseParser):
         if not match:
             return None
 
-        # match.group(1) captures the unit (alat, bohr, or angstrom)
         units = match.group(1).lower() if match.group(1) else "alat"
         rows = []
         for row_match in regex_utils.regex_search_by_schema(
@@ -108,15 +91,14 @@ class EspressoPwxStdinParser(BaseParser):
         if units == "bohr":
             rows = [[v * COEFFICIENTS["BOHR_TO_ANGSTROM"] for v in row] for row in rows]
         elif units == "alat":
-            if not celldm1_angstrom:
+            alat = self.celldm1_angstrom
+            if not alat:
                 raise ValueError("alat units require celldm(1)")
-            rows = [[v * celldm1_angstrom for v in row] for row in rows]
+            rows = [[v * alat for v in row] for row in rows]
 
         return rows
 
-    def get_card_atomic_positions(
-        self, cell: List[List[float]], celldm1_angstrom: Optional[float] = None
-    ) -> Tuple[List[str], List[List[float]]]:
+    def get_card_atomic_positions(self, cell: List[List[float]]) -> Tuple[List[str], List[List[float]]]:
         """
         Parses the ATOMIC_POSITIONS card and converts coordinates to Cartesian Angstroms.
         """
@@ -145,11 +127,34 @@ class EspressoPwxStdinParser(BaseParser):
             elif units == "bohr":
                 coords = [v * COEFFICIENTS["BOHR_TO_ANGSTROM"] for v in coords]
             elif units == "alat":
-                if not celldm1_angstrom:
+                alat = self.celldm1_angstrom
+                if not alat:
                     raise ValueError("alat units require celldm(1)")
-                coords = [v * celldm1_angstrom for v in coords]
+                coords = [v * alat for v in coords]
 
             names.append(symbol)
             positions.append(coords)
 
         return names, positions
+
+    @property
+    def parsed_content(self) -> dict:
+        """
+        Returns the entire parsed input file as a flat dictionary containing both namelists and cards.
+        Aligns directly with the ESSE pw.x.json schema.
+        """
+        result = {
+            "control": self.get_namelist("control"),
+            "system": self.get_namelist("system"),
+            "electrons": self.get_namelist("electrons"),
+        }
+
+        cell_params = self.get_card_cell_parameters()
+        if cell_params:
+            result["cell_parameters"] = cell_params
+
+        names, positions = self.get_card_atomic_positions(cell_params or [])
+        if names:
+            result["atomic_positions"] = {"names": names, "positions": positions}
+
+        return result

@@ -6,7 +6,7 @@ def test_espresso_pwx_stdin():
     file_content = get_content_by_reference_path("applications/espresso/v5.4.0/stdin")
     parser = EspressoPwxStdinParser(content=file_content)
 
-    namelist_control = parser.namelists.get("control", {})
+    namelist_control = parser.parsed_content.get("control", {})
     calculation_value = namelist_control.get("calculation")
 
     assert calculation_value == "scf"
@@ -21,7 +21,7 @@ def test_get_namelist_parses_indexed_fortran_keys():
 /
 """
     parser = EspressoPwxStdinParser(content=content)
-    system = parser.get_namelist("SYSTEM")
+    system = parser.get_namelist("system")
 
     assert system["ibrav"] == "1"
     assert system["celldm1"] == "15.9018255"
