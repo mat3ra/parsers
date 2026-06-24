@@ -25,33 +25,41 @@ class EspressoPwxStdinParser(BaseParser):
         super().__init__(content, version=version)
 
         regex_dict = object_utils.get(SCHEMAS, EspressoPwxStdinParser.schema_path) or {}
+        partials_dict = object_utils.get(SCHEMAS, "/applications/espresso/partials") or {}
 
-        self.namelist_block_content_regex_object = regex_dict.get("namelist_block")
-        self.kv_pair_regex_object = regex_dict.get("kv_pair")
-        self.kv_pair_with_index_regex_object = regex_dict.get("kv_pair_with_index")
         self.cell_parameters_card_regex_object = regex_dict.get("cell_parameters_card")
-        self.cell_parameters_row_regex_object = regex_dict.get("cell_parameters_row")
         self.atomic_positions_card_regex_object = regex_dict.get("atomic_positions_card")
-        self.atomic_positions_row_regex_object = regex_dict.get("atomic_positions_row")
+
+        self.kv_pair_regex_object = partials_dict.get("kv_pair")
+        self.kv_pair_with_index_regex_object = partials_dict.get("kv_pair_with_index")
+        self.cell_parameters_row_regex_object = partials_dict.get("cell_parameters_row")
+        self.atomic_positions_row_regex_object = partials_dict.get("atomic_positions_row")
 
     def get_namelist(self, namelist_name: str) -> dict:
         """
         Extracts an entire namelist block and parses all key=value pairs into a dictionary.
         This handles standard keys and Fortran indexed arrays like celldm(N) or starting_magnetization(N).
         """
-        matches = regex_utils.regex_search_by_schema(
-            content=self.content, schema=self.namelist_block_content_regex_object, find_all=True
-        )
+        # Fetch the flattened control/_format to use as a generic blueprint
+        base_format_obj = object_utils.get(SCHEMAS, f"{self.schema_path}/control/_format")
 
-        block_content = None
-        for match in matches:
-            # Group 1 captures the block name (e.g., "CONTROL" or "SYSTEM") from the build-time OR-group
-            if match.group(1).upper() == namelist_name.upper():
-                block_content = match.group(2)  # Group 2 contains the body content
-                break
+        # Dynamically replace (CONTROL) with the requested namelist_name (e.g., IONS, SYSTEM)
+        block_regex_string = base_format_obj["regex"].replace("(CONTROL)", f"({namelist_name.upper()})")
 
-        if not block_content:
+        custom_schema = {
+            "regex": block_regex_string,
+            "flags": base_format_obj.get("flags", [])
+        }
+
+        matches = list(regex_utils.regex_search_by_schema(
+            content=self.content, schema=custom_schema, find_all=True
+        ))
+
+        if not matches:
             return {}
+
+        # Group 0 is the full matched string of the isolated block
+        block_content = matches[0].group(0)
 
         result = {}
 
