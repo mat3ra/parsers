@@ -23,6 +23,6 @@ def test_get_namelist_parses_indexed_fortran_keys():
     parser = EspressoPwxStdinParser(content=content)
     system = parser.get_namelist("system")
 
-    assert system["ibrav"] == "1"
-    assert system["celldm1"] == "15.9018255"
-    assert system["starting_magnetization2"] == "0.5"
+    assert system["ibrav"] == 1
+    assert system["celldm1"] == 15.9018255
+    assert system["starting_magnetization2"] == 0.5
