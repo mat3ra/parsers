@@ -79,7 +79,7 @@ class EspressoPwxStdinParser(BaseParser):
         if not match:
             return None
 
-        units = match.group(1).lower() if match.group(1) else "alat"
+        original_units = match.group(1).lower() if match.group(1) else "alat"
         rows = []
         for row_match in regex_utils.regex_search_by_schema(
             content=match.group(2),
@@ -89,15 +89,23 @@ class EspressoPwxStdinParser(BaseParser):
             row = row_match.groupdict()
             rows.append([float(row[c]) for c in ("x", "y", "z")])
 
-        if units == "bohr":
+        # Convert to Angstroms and map output
+        if original_units == "bohr":
             rows = [[v * COEFFICIENTS["BOHR_TO_ANGSTROM"] for v in row] for row in rows]
-        elif units == "alat":
+        elif original_units == "alat":
             alat = self.celldm1_angstrom
             if not alat:
                 raise ValueError("alat units require celldm(1)")
             rows = [[v * alat for v in row] for row in rows]
 
-        return rows
+        return {
+            "card_option": "angstrom",
+            "values": {
+                "v1": rows[0],
+                "v2": rows[1],
+                "v3": rows[2]
+            }
+        }
 
     def get_card_atomic_positions(self, cell: List[List[float]]) -> Tuple[List[str], List[List[float]]]:
         """
@@ -109,8 +117,8 @@ class EspressoPwxStdinParser(BaseParser):
         if not match:
             return [], []
 
-        units = match.group(1).lower() if match.group(1) else "alat"
-        names, positions = [], []
+        original_units = match.group(1).lower() if match.group(1) else "alat"
+        values = []
 
         for row_match in regex_utils.regex_search_by_schema(
             content=match.group(2),
@@ -121,41 +129,66 @@ class EspressoPwxStdinParser(BaseParser):
             symbol = row["symbol"]
             coords = [float(row[c]) for c in ("x", "y", "z")]
 
-            if units in ["crystal", "crystal_sg"]:
+            if original_units in ["crystal", "crystal_sg"]:
                 if not cell:
                     raise ValueError("crystal units require a parsed cell to convert to Cartesian")
                 coords = [sum(coords[i] * cell[i][j] for i in range(3)) for j in range(3)]
-            elif units == "bohr":
+            elif original_units == "bohr":
                 coords = [v * COEFFICIENTS["BOHR_TO_ANGSTROM"] for v in coords]
-            elif units == "alat":
+            elif original_units == "alat":
                 alat = self.celldm1_angstrom
                 if not alat:
                     raise ValueError("alat units require celldm(1)")
                 coords = [v * alat for v in coords]
 
-            names.append(symbol)
-            positions.append(coords)
+            values.append({
+                "X": symbol,
+                "x": coords[0],
+                "y": coords[1],
+                "z": coords[2]
+            })
 
-        return names, positions
+        return {
+            "card_option": "angstrom",
+            "values": values
+        }
 
     @property
     def parsed_content(self) -> dict:
         """
-        Returns the entire parsed input file as a flat dictionary containing both namelists and cards.
+        Returns the entire parsed input file as a flat dictionary.
         Aligns directly with the ESSE pw.x.json schema.
         """
         result = {
-            "control": self.get_namelist("control"),
-            "system": self.get_namelist("system"),
-            "electrons": self.get_namelist("electrons"),
+            "CONTROL": self.get_namelist("control"),
+            "SYSTEM": self.get_namelist("system"),
+            "ELECTRONS": self.get_namelist("electrons"),
         }
 
         cell_params = self.get_card_cell_parameters()
         if cell_params:
-            result["cell_parameters"] = cell_params
+            result["CELL_PARAMETERS"] = cell_params
 
-        names, positions = self.get_card_atomic_positions(cell_params or [])
-        if names:
-            result["atomic_positions"] = {"names": names, "positions": positions}
+        # extract the raw matrix out of the dictionary for Cartesian conversion
+        cell_matrix = []
+        if cell_params:
+            vals = cell_params["values"]
+            cell_matrix = [vals["v1"], vals["v2"], vals["v3"]]
+
+        # pass the list of lists (cell_matrix)
+        atomic_positions = self.get_card_atomic_positions(cell_matrix)
+
+        if atomic_positions:
+            result["ATOMIC_POSITIONS"] = atomic_positions
 
         return result
+
+    def validate_schema(self) -> None:
+        """
+        Validates the parsed content against the ESSE pw.x schema.
+        Raises an exception if invalid.
+        """
+        from mat3ra.esse import ESSE # Lazy import to prevent tight coupling
+        es = ESSE()
+        pwin_schema = es.get_schema_by_id("apse/file/applications/espresso/7.2/pw.x")
+        es.validate(self.parsed_content, pwin_schema)
