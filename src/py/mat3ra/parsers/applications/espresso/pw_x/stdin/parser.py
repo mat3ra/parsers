@@ -79,7 +79,7 @@ class EspressoPwxStdinParser(BaseParser):
         if not match:
             return None
 
-        original_units = match.group(1).lower() if match.group(1) else "alat"
+        units = match.group(1).lower() if match.group(1) else "alat"
         rows = []
         for row_match in regex_utils.regex_search_by_schema(
             content=match.group(2),
@@ -89,17 +89,8 @@ class EspressoPwxStdinParser(BaseParser):
             row = row_match.groupdict()
             rows.append([float(row[c]) for c in ("x", "y", "z")])
 
-        # Convert to Angstroms and map output
-        if original_units == "bohr":
-            rows = [[v * COEFFICIENTS["BOHR_TO_ANGSTROM"] for v in row] for row in rows]
-        elif original_units == "alat":
-            alat = self.celldm1_angstrom
-            if not alat:
-                raise ValueError("alat units require celldm(1)")
-            rows = [[v * alat for v in row] for row in rows]
-
         return {
-            "card_option": "angstrom",
+            "card_option": units,
             "values": {
                 "v1": rows[0],
                 "v2": rows[1],
@@ -107,7 +98,7 @@ class EspressoPwxStdinParser(BaseParser):
             }
         }
 
-    def get_card_atomic_positions(self, cell: List[List[float]]) -> Tuple[List[str], List[List[float]]]:
+    def get_card_atomic_positions(self) -> Optional[dict]:
         """
         Parses the ATOMIC_POSITIONS card and converts coordinates to Cartesian Angstroms.
         """
@@ -117,7 +108,7 @@ class EspressoPwxStdinParser(BaseParser):
         if not match:
             return [], []
 
-        original_units = match.group(1).lower() if match.group(1) else "alat"
+        units = match.group(1).lower() if match.group(1) else "alat"
         values = []
 
         for row_match in regex_utils.regex_search_by_schema(
@@ -126,30 +117,15 @@ class EspressoPwxStdinParser(BaseParser):
             find_all=True,
         ):
             row = row_match.groupdict()
-            symbol = row["symbol"]
-            coords = [float(row[c]) for c in ("x", "y", "z")]
-
-            if original_units in ["crystal", "crystal_sg"]:
-                if not cell:
-                    raise ValueError("crystal units require a parsed cell to convert to Cartesian")
-                coords = [sum(coords[i] * cell[i][j] for i in range(3)) for j in range(3)]
-            elif original_units == "bohr":
-                coords = [v * COEFFICIENTS["BOHR_TO_ANGSTROM"] for v in coords]
-            elif original_units == "alat":
-                alat = self.celldm1_angstrom
-                if not alat:
-                    raise ValueError("alat units require celldm(1)")
-                coords = [v * alat for v in coords]
-
             values.append({
-                "X": symbol,
-                "x": coords[0],
-                "y": coords[1],
-                "z": coords[2]
+                "X": row["symbol"],
+                "x": float(row["x"]),
+                "y": float(row["y"]),
+                "z": float(row["z"])
             })
 
         return {
-            "card_option": "angstrom",
+            "card_option": units,
             "values": values
         }
 
@@ -169,15 +145,7 @@ class EspressoPwxStdinParser(BaseParser):
         if cell_params:
             result["CELL_PARAMETERS"] = cell_params
 
-        # extract the raw matrix out of the dictionary for Cartesian conversion
-        cell_matrix = []
-        if cell_params:
-            vals = cell_params["values"]
-            cell_matrix = [vals["v1"], vals["v2"], vals["v3"]]
-
-        # pass the list of lists (cell_matrix)
-        atomic_positions = self.get_card_atomic_positions(cell_matrix)
-
+        atomic_positions = self.get_card_atomic_positions()
         if atomic_positions:
             result["ATOMIC_POSITIONS"] = atomic_positions
 
