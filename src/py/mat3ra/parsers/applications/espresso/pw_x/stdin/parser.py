@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from mat3ra.parsers import BaseParser
 from mat3ra.regex.data.schemas import SCHEMAS
@@ -106,7 +106,7 @@ class EspressoPwxStdinParser(BaseParser):
             content=self.content, schema=self.stdin_schema.get("atomic_positions_card")
         )
         if not match:
-            return [], []
+            return None
 
         units = match.group(1).lower() if match.group(1) else "alat"
         values = []
