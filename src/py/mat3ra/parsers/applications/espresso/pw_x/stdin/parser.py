@@ -5,6 +5,7 @@ from mat3ra.regex.data.schemas import SCHEMAS
 from mat3ra.utils import object as object_utils
 from mat3ra.utils import regex as regex_utils
 from mat3ra.utils.constants import COEFFICIENTS
+from mat3ra.parsers.utils import cast_fortran_string
 
 
 class EspressoPwxStdinParser(BaseParser):
@@ -46,7 +47,7 @@ class EspressoPwxStdinParser(BaseParser):
         ):
             k = kv_match.group(1).strip().lower()
             v = kv_match.group(2).strip().strip("'\"")
-            result[k] = v
+            result[k] = cast_fortran_string(v)
 
         for array_match in regex_utils.regex_search_by_schema(
             content=block_content, schema=self.partials_schema.get("kv_pair_with_index"), find_all=True
@@ -54,7 +55,7 @@ class EspressoPwxStdinParser(BaseParser):
             key = array_match.group(1).strip().lower()
             index = array_match.group(2).strip()
             value = array_match.group(3).strip().strip("'\"")
-            result[f"{key}{index}"] = value
+            result[f"{key}{index}"] = cast_fortran_string(value)
 
         return result
 
