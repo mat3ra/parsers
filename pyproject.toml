@@ -18,7 +18,7 @@ dependencies = [
     # add requirements here
     "numpy",
     "mat3ra-esse @ git+https://github.com/mat3ra/esse.git@34558bccb2c7df4a486e4191cc34a561398ee404",
-    "mat3ra-made @ git+https://github.com/mat3ra/made.git@5a6646dc14b8981efbb80d5646e46a33404c49e6",
+    "mat3ra-made @ git+https://github.com/mat3ra/made.git@ed36a530af3c4e43d000bc18ceb6d367d38711ac",
     "mat3ra-regex @ git+https://github.com/mat3ra/regex.git@a43962dc82673d28cc8a0ff3b6a8f57418dd4742",
     "mat3ra-fixtures",
     "pymatgen",
