@@ -19,7 +19,7 @@ dependencies = [
     "numpy",
     "mat3ra-esse>=2026.6.30.post0",
     "mat3ra-made @ git+https://github.com/mat3ra/made.git@a33dad1af8a9d4322e91acf78036aebd994d26a9",
-    "mat3ra-regex @ git+https://github.com/mat3ra/regex.git@a43962dc82673d28cc8a0ff3b6a8f57418dd4742",
+    "mat3ra-regex @ git+https://github.com/mat3ra/regex.git@8124db7e9582c5ba435489b21613c18b0fd42145",
     "mat3ra-fixtures",
     "pymatgen",
 ]
