@@ -6,7 +6,7 @@ from mat3ra.parsers.applications.espresso.pw_x.stdin.parser import EspressoPwxSt
 def test_espresso_pwx_stdin():
     file_content = get_content_by_reference_path("applications/espresso/v5.4.0/stdin")
     parser = EspressoPwxStdinParser(content=file_content)
-    parsed_content = parser.parsed_content
+    parsed_content = parser.parse()["content"]
 
     assert parsed_content["CONTROL"]["calculation"] == "scf" # string
     assert parsed_content["CONTROL"]["wf_collect"] is True   # boolean

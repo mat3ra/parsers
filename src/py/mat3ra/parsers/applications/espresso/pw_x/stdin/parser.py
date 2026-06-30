@@ -129,8 +129,7 @@ class EspressoPwxStdinParser(BaseParser):
             "values": values
         }
 
-    @property
-    def parsed_content(self) -> dict:
+    def parse(self) -> dict:
         """
         Returns the entire parsed input file as a flat dictionary.
         Aligns directly with the ESSE pw.x.json schema.
@@ -149,7 +148,10 @@ class EspressoPwxStdinParser(BaseParser):
         if atomic_positions:
             result["ATOMIC_POSITIONS"] = atomic_positions
 
-        return result
+        return {
+            "content": result,
+            "version": self.version,
+        }
 
     def validate_schema(self) -> None:
         """
@@ -159,4 +161,4 @@ class EspressoPwxStdinParser(BaseParser):
         from mat3ra.esse import ESSE # Lazy import to prevent tight coupling
         es = ESSE()
         pwin_schema = es.get_schema_by_id("apse/file/applications/espresso/7.2/pw.x")
-        es.validate(self.parsed_content, pwin_schema)
+        es.validate(self.parse()["content"], pwin_schema)
