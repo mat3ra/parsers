@@ -6,7 +6,9 @@ from typing import List, Tuple
 import numpy as np
 
 from mat3ra.esse.models.properties_directory.structural.lattice import LatticeSchema
-from mat3ra.made.cell.primitive_cell import get_primitive_lattice_vectors_from_config
+from mat3ra.made.cell import Cell
+from mat3ra.made.lattice import Lattice
+from mat3ra.made.cell.primitive_cell import get_primitive_cell_from_config
 from mat3ra.utils.constants import COEFFICIENTS
 
 from .parser import EspressoPwxStdinParser
@@ -42,9 +44,7 @@ class EspressoPwxStdinMaterial(EspressoPwxStdinParser):
             return [round(v, precision) for v in values]
         return round(values, precision)
 
-    def _get_cell_from_ibrav(
-        self, system: dict
-    ) -> Tuple[str, float, float, float, float, float, float, List[List[float]]]:
+    def _get_cell_from_ibrav(self, system: dict) -> Tuple[str, float, float, float, float, float, float, Cell]:
         """
         Parses system parameters and uses `made` to calculate the 3x3 primitive matrix.
         """
@@ -80,27 +80,10 @@ class EspressoPwxStdinMaterial(EspressoPwxStdinParser):
                 else float(system.get("gamma", 90))
             )
 
-        # Leverage the exact schema and primitive generator from `made`
         lattice_config = LatticeSchema(type=lattice_type, a=a, b=b, c=c, alpha=alpha, beta=beta, gamma=gamma)
-        vectors = get_primitive_lattice_vectors_from_config(lattice_config)
+        cell = get_primitive_cell_from_config(lattice_config)
 
-        return lattice_type, a, b, c, alpha, beta, gamma, vectors
-
-    def _get_lattice_params_from_matrix(
-        self, matrix: List[List[float]]
-    ) -> Tuple[float, float, float, float, float, float]:
-        """
-        Extracts a, b, c, alpha, beta, gamma from a 3x3 Cartesian matrix when explicitly defined.
-        """
-        v1, v2, v3 = np.array(matrix[0]), np.array(matrix[1]), np.array(matrix[2])
-        a = np.linalg.norm(v1)
-        b = np.linalg.norm(v2)
-        c = np.linalg.norm(v3)
-        # Clip to [-1.0, 1.0] to prevent floating-point errors in arccos
-        alpha = np.degrees(np.arccos(np.clip(np.dot(v2, v3) / (b * c), -1.0, 1.0)))
-        beta = np.degrees(np.arccos(np.clip(np.dot(v1, v3) / (a * c), -1.0, 1.0)))
-        gamma = np.degrees(np.arccos(np.clip(np.dot(v1, v2) / (a * b), -1.0, 1.0)))
-        return a, b, c, alpha, beta, gamma
+        return lattice_type, a, b, c, alpha, beta, gamma, cell
 
     @property
     def lattice(self) -> dict:
@@ -115,29 +98,31 @@ class EspressoPwxStdinMaterial(EspressoPwxStdinParser):
             matrix = [cell_card["values"]["v1"], cell_card["values"]["v2"], cell_card["values"]["v3"]]
             units = cell_card.get("card_option", "alat").lower()
 
-            # Apply alat scale if the vectors are strictly in Bohr units
             if units == "alat" and self.celldm1_angstrom:
                 matrix = [[val * self.celldm1_angstrom for val in row] for row in matrix]
 
-            lattice_type = "TRI"  # Defaulting to Triclinic when explicitly defined (without symmetry engine)
-            a, b, c, alpha, beta, gamma = self._get_lattice_params_from_matrix(matrix)
-            vectors = matrix
+            domain_lattice = Lattice.from_vectors_array(matrix)
+
         else:
-            lattice_type, a, b, c, alpha, beta, gamma, vectors = self._get_cell_from_ibrav(system)
+            lattice_type, a, b, c, alpha, beta, gamma, cell = self._get_cell_from_ibrav(system)
+
+            domain_lattice = Lattice(type=lattice_type, a=a, b=b, c=c, alpha=alpha, beta=beta, gamma=gamma)
+
+        vectors = domain_lattice.vector_arrays_rounded
 
         return {
-            "type": lattice_type,
-            "a": self._round(float(a), 6),
-            "b": self._round(float(b), 6),
-            "c": self._round(float(c), 6),
-            "alpha": self._round(float(alpha), 4),
-            "beta": self._round(float(beta), 4),
-            "gamma": self._round(float(gamma), 4),
+            "type": domain_lattice.type.value if hasattr(domain_lattice.type, "value") else domain_lattice.type,
+            "a": domain_lattice.round_array_or_number(domain_lattice.a, 6),
+            "b": domain_lattice.round_array_or_number(domain_lattice.b, 6),
+            "c": domain_lattice.round_array_or_number(domain_lattice.c, 6),
+            "alpha": domain_lattice.round_array_or_number(domain_lattice.alpha, 4),
+            "beta": domain_lattice.round_array_or_number(domain_lattice.beta, 4),
+            "gamma": domain_lattice.round_array_or_number(domain_lattice.gamma, 4),
             "units": {"length": "angstrom", "angle": "degree"},
             "vectors": {
-                "a": self._round(vectors[0], 6),
-                "b": self._round(vectors[1], 6),
-                "c": self._round(vectors[2], 6),
+                "a": vectors[0],
+                "b": vectors[1],
+                "c": vectors[2],
                 "alat": 1.0,
             },
         }
