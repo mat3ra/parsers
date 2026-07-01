@@ -1,0 +1,185 @@
+import math
+from collections import Counter
+from functools import reduce
+from typing import Tuple
+
+from mat3ra.esse.models.properties_directory.structural.lattice import LatticeSchema
+from mat3ra.made.cell import Cell
+from mat3ra.made.lattice import Lattice
+from mat3ra.made.cell.primitive_cell import get_primitive_cell_from_config
+from mat3ra.utils.constants import COEFFICIENTS
+
+from .parser import EspressoPwxStdinParser
+
+# Maps QE ibrav codes → made/esse Bravais type strings
+# fmt: off
+IBRAV_TO_LATTICE_TYPE = {
+    1:  "CUB",
+    2:  "FCC",
+    3:  "BCC",  -3: "BCC",
+    4:  "HEX",
+    5:  "RHL",  -5: "RHL",
+    6:  "TET",
+    7:  "BCT",
+    8:  "ORC",
+    9:  "ORCC", -9: "ORCC",
+    10: "ORCF",
+    11: "ORCI",
+    12: "MCL",  -12: "MCL",
+    13: "MCLC",
+    14: "TRI",
+}
+# fmt: on
+
+
+class EspressoPwxStdinMaterial(EspressoPwxStdinParser):
+    """
+    Translates Espresso PWX stdin syntax intermediate configs into MADE material domain configs.
+    """
+
+    def _round(self, values, precision=6):
+        if isinstance(values, list):
+            return [round(v, precision) for v in values]
+        return round(values, precision)
+
+    def _get_cell_from_ibrav(self, system: dict) -> Tuple[str, float, float, float, float, float, float, Cell]:
+        """
+        Parses system parameters and uses `made` to calculate the 3x3 primitive matrix.
+        """
+        ibrav = int(system.get("ibrav", 0))
+        lattice_type = IBRAV_TO_LATTICE_TYPE.get(ibrav)
+        if lattice_type is None:
+            raise ValueError(f"Unsupported ibrav={ibrav}")
+
+        has_celldm = "celldm1" in system
+
+        if has_celldm:
+            a = float(system["celldm1"]) * COEFFICIENTS["BOHR_TO_ANGSTROM"]
+            b = a * float(system.get("celldm2", 1))
+            c = a * float(system.get("celldm3", 1))
+            alpha = math.degrees(math.acos(float(system.get("celldm4", 0))))
+            beta = math.degrees(math.acos(float(system.get("celldm5", 0))))
+            gamma = math.degrees(math.acos(float(system.get("celldm6", 0))))
+        else:
+            a = float(system.get("a", 1))
+            b = float(system.get("b", a))
+            c = float(system.get("c", a))
+            alpha = (
+                math.degrees(math.acos(float(system["cosbc"])))
+                if "cosbc" in system
+                else float(system.get("alpha", 90))
+            )
+            beta = (
+                math.degrees(math.acos(float(system["cosac"]))) if "cosac" in system else float(system.get("beta", 90))
+            )
+            gamma = (
+                math.degrees(math.acos(float(system["cosab"])))
+                if "cosab" in system
+                else float(system.get("gamma", 90))
+            )
+
+        lattice_config = LatticeSchema(type=lattice_type, a=a, b=b, c=c, alpha=alpha, beta=beta, gamma=gamma)
+        cell = get_primitive_cell_from_config(lattice_config)
+
+        return lattice_type, a, b, c, alpha, beta, gamma, cell
+
+    @property
+    def lattice(self) -> dict:
+        system = self.get_namelist("system")
+        ibrav = int(system.get("ibrav", 0))
+
+        if ibrav == 0:
+            cell_card = self.get_card_cell_parameters()
+            if not cell_card:
+                raise ValueError("ibrav is 0 but CELL_PARAMETERS card is missing.")
+
+            matrix = [cell_card["values"]["v1"], cell_card["values"]["v2"], cell_card["values"]["v3"]]
+            units = cell_card.get("card_option", "alat").lower()
+
+            if units == "alat" and self.celldm1_angstrom:
+                matrix = [[val * self.celldm1_angstrom for val in row] for row in matrix]
+
+            domain_lattice = Lattice.from_vectors_array(matrix)
+
+        else:
+            lattice_type, a, b, c, alpha, beta, gamma, cell = self._get_cell_from_ibrav(system)
+
+            domain_lattice = Lattice(type=lattice_type, a=a, b=b, c=c, alpha=alpha, beta=beta, gamma=gamma)
+
+        vectors = domain_lattice.vector_arrays_rounded
+
+        return {
+            "type": domain_lattice.type.value if hasattr(domain_lattice.type, "value") else domain_lattice.type,
+            "a": domain_lattice.round_array_or_number(domain_lattice.a, 6),
+            "b": domain_lattice.round_array_or_number(domain_lattice.b, 6),
+            "c": domain_lattice.round_array_or_number(domain_lattice.c, 6),
+            "alpha": domain_lattice.round_array_or_number(domain_lattice.alpha, 4),
+            "beta": domain_lattice.round_array_or_number(domain_lattice.beta, 4),
+            "gamma": domain_lattice.round_array_or_number(domain_lattice.gamma, 4),
+            "units": {"length": "angstrom", "angle": "degree"},
+            "vectors": {
+                "a": vectors[0],
+                "b": vectors[1],
+                "c": vectors[2],
+                "alat": 1.0,
+            },
+        }
+
+    @property
+    def basis(self) -> dict:
+        atomic_positions = self.get_card_atomic_positions()
+        if not atomic_positions:
+            return {}
+
+        elements = []
+        coordinates = []
+        card_option = atomic_positions.get("card_option", "crystal").lower()
+
+        for i, site in enumerate(atomic_positions["values"]):
+            elements.append({"id": i, "value": site["X"]})
+            coords = [site["x"], site["y"], site["z"]]
+
+            # Apply alat scale if coordinates are given in alat
+            if card_option == "alat" and self.celldm1_angstrom:
+                coords = [c * self.celldm1_angstrom for c in coords]
+                units = "cartesian"
+            elif card_option == "angstrom":
+                units = "cartesian"
+            else:
+                units = "crystal"
+
+            coordinates.append({"id": i, "value": self._round(coords, 6)})
+
+        return {"units": units, "elements": elements, "coordinates": coordinates}
+
+    @property
+    def formula(self) -> str:
+        """
+        Creates a raw standard formula (e.g. Si4O8)
+        """
+        atomic_positions = self.get_card_atomic_positions()
+        if not atomic_positions:
+            return ""
+
+        species = [site["X"] for site in atomic_positions["values"]]
+        counts = Counter(species)
+        return "".join([f"{el}{cnt}" if cnt > 1 else el for el, cnt in counts.items()])
+
+    @property
+    def name(self) -> str:
+        """
+        Creates a reduced formula acting as the material name (e.g. SiO2)
+        """
+        atomic_positions = self.get_card_atomic_positions()
+        if not atomic_positions:
+            return ""
+
+        species = [site["X"] for site in atomic_positions["values"]]
+        counts = Counter(species)
+
+        if not counts:
+            return ""
+
+        # Greatest Common Divisor to reduce the formula
+        divisor = reduce(math.gcd, counts.values())
+        return "".join([f"{el}{count//divisor}" if count // divisor > 1 else el for el, count in counts.items()])
