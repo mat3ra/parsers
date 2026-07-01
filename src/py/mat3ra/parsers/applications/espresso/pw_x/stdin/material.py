@@ -1,9 +1,7 @@
 import math
 from collections import Counter
 from functools import reduce
-from typing import List, Tuple
-
-import numpy as np
+from typing import Tuple
 
 from mat3ra.esse.models.properties_directory.structural.lattice import LatticeSchema
 from mat3ra.made.cell import Cell

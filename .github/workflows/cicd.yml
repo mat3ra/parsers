@@ -30,6 +30,7 @@ jobs:
         uses: ./actions/py/lint
         with:
           python-version: ${{ matrix.python-version }}
+          ruff-version: 0.15.20
 
   run-py-tests:
     needs: run-py-linter
