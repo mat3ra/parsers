@@ -10,6 +10,8 @@ A dual repository (JavaScript and Python) containing parsers.
 - `xrf-instrument`: an XRF grid table, one row per site
 - `dc-iv-instrument`: a folder with `IV_Volts.txt` and `IV_Amps.txt`
 
+A `sample.json` in the input folder (for a table, beside it) is merged, as it is, into every sample's `metadata`.
+
 The install needs Python 3.10+, git and git-lfs (`git lfs install` once); without git-lfs the example data and workflows arrive as pointer files.
 
 ```bash

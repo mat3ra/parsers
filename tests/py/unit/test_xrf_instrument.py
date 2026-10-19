@@ -9,7 +9,7 @@ from mat3ra.parsers.entities.measurement_set import MeasurementSetParser
 GRID_PATH = (
     Path(mat3ra.fixtures.__file__).parent / "data/instruments/xrf_instrument/1.0/case-001/com5_1448_xrf_grid.txt"
 )
-GRID = get_content_by_reference_path("instruments/xrf_instrument/v1.0/grid")
+GRID_LINES = get_content_by_reference_path("instruments/xrf_instrument/v1.0/grid").splitlines(keepends=True)
 WORKFLOW = json.loads(get_content_by_reference_path("instruments/xrf_instrument/v1.0/workflow"))
 EXPECTED_MEASUREMENT_NAMES = ["com5_1448_xrf_grid r1c1", "com5_1448_xrf_grid r1c2"]
 EXPECTED_FIRST_SITE = {
@@ -19,7 +19,10 @@ EXPECTED_FIRST_SITE = {
     "setup": {"instrument": {}},
     "sample": {"name": "r1c1", "metadata": {"position": {"coordinates": [5.4000001, 6.6500001], "units": "mm"}}},
 }
-EXPECTED_FILES = {"r1c1/files/com5_1448_xrf_grid.txt": GRID, "r1c2/files/com5_1448_xrf_grid.txt": GRID}
+EXPECTED_FILES = {
+    "r1c1/files/com5_1448_xrf_grid.txt": GRID_LINES[0] + GRID_LINES[1],
+    "r1c2/files/com5_1448_xrf_grid.txt": GRID_LINES[0] + GRID_LINES[2],
+}
 
 
 def test_xrf_instrument(tmp_path):

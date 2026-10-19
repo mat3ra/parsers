@@ -20,9 +20,11 @@ class DcIvInstrumentParser(BaseParser):
     def parse(self):
         """Returns {"content": {"set", "measurements", "files"}, "version"}."""
         data_folder = Path(self.content)
-        voltage_lines = (data_folder / "IV_Volts.txt").read_text().splitlines()[1:]
+        lines = {
+            name: (data_folder / name).read_text().splitlines(keepends=True) for name in ("IV_Volts.txt", "IV_Amps.txt")
+        }
         measurements, files = {}, {}
-        for row_number in range(1, len(voltage_lines) + 1):
+        for row_number in range(1, len(lines["IV_Volts.txt"])):
             label = f"row{row_number}"
             measurements[label] = {
                 "name": f"{data_folder.name} {label}",
@@ -32,6 +34,6 @@ class DcIvInstrumentParser(BaseParser):
                 "workflow": self.workflow,
                 "sample": {"name": label},
             }
-            files[label] = {file_name: str(data_folder / file_name) for file_name in ("IV_Volts.txt", "IV_Amps.txt")}
+            files[label] = {name: [lines[name][0], lines[name][row_number]] for name in lines}
         set_document = {"name": data_folder.name, "description": "", "metadata": {}}
         return {"content": {"set": set_document, "measurements": measurements, "files": files}, "version": self.version}

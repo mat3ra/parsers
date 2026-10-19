@@ -21,8 +21,9 @@ class XrfInstrumentParser(BaseParser):
     def parse(self):
         """Returns {"content": {"set", "measurements", "files"}, "version"}."""
         grid = Path(self.content)
+        lines = grid.read_text().splitlines(keepends=True)
         measurements, files = {}, {}
-        for row in csv.DictReader(grid.read_text().splitlines(), delimiter="\t"):
+        for line, row in zip(lines[1:], csv.DictReader(lines, delimiter="\t")):
             label = f"r{row['Row']}c{row['Column']}"
             position = {"coordinates": [float(row["x_mm"]), float(row["y_mm"])], "units": "mm"}
             measurements[label] = {
@@ -33,6 +34,6 @@ class XrfInstrumentParser(BaseParser):
                 "workflow": self.workflow,
                 "sample": {"name": label, "metadata": {"position": position}},
             }
-            files[label] = {grid.name: str(grid)}
+            files[label] = {grid.name: [lines[0], line]}
         set_document = {"name": grid.stem, "description": "", "metadata": {}}
         return {"content": {"set": set_document, "measurements": measurements, "files": files}, "version": self.version}

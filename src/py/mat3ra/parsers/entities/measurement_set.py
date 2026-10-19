@@ -29,14 +29,21 @@ class MeasurementSetParser(BaseParser):
     def write(self, folder):
         """Writes set.json, <measurement>/measurement.json and <measurement>/files/; returns the measurement count."""
         content = self.pre_parser.parse()["content"]
+        data_folder = Path(self.content) if Path(self.content).is_dir() else Path(self.content).parent
+        sample_path = data_folder / "sample.json"
         folder = Path(folder)
         folder.mkdir(parents=True, exist_ok=True)
         (folder / "set.json").write_text(json.dumps(content["set"], indent=4))
         for name, measurement in content["measurements"].items():
+            if sample_path.exists():
+                measurement["sample"].setdefault("metadata", {}).update(json.loads(sample_path.read_text()))
             (folder / name).mkdir(exist_ok=True)
             (folder / name / "measurement.json").write_text(json.dumps(measurement, indent=4))
             for relative_path, source in content["files"][name].items():
                 destination = folder / name / "files" / relative_path
                 destination.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(source, destination)
+                if isinstance(source, list):
+                    destination.write_text("".join(source))
+                else:
+                    shutil.copyfile(source, destination)
         return len(content["measurements"])

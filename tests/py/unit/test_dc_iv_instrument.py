@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 
 import mat3ra.fixtures
@@ -7,9 +8,10 @@ from mat3ra.fixtures import get_content_by_reference_path
 from mat3ra.parsers.entities.measurement_set import MeasurementSetParser
 
 DATA_FOLDER = Path(mat3ra.fixtures.__file__).parent / "data/instruments/dc_iv_instrument/1.0/case-001/1448 DC IV data"
-VOLTAGE = get_content_by_reference_path("instruments/dc_iv_instrument/v1.0/voltage")
-CURRENT = get_content_by_reference_path("instruments/dc_iv_instrument/v1.0/current")
+VOLTAGE_LINES = get_content_by_reference_path("instruments/dc_iv_instrument/v1.0/voltage").splitlines(keepends=True)
+CURRENT_LINES = get_content_by_reference_path("instruments/dc_iv_instrument/v1.0/current").splitlines(keepends=True)
 WORKFLOW = json.loads(get_content_by_reference_path("instruments/dc_iv_instrument/v1.0/workflow"))
+SAMPLE_METADATA = {"pad": {"shape": "circle", "size": {"radius": 0.25, "units": "mm"}}}
 EXPECTED_MEASUREMENT_NAMES = ["1448 DC IV data row1", "1448 DC IV data row2"]
 EXPECTED_FIRST_ROW = {
     "name": "1448 DC IV data row1",
@@ -19,10 +21,10 @@ EXPECTED_FIRST_ROW = {
     "sample": {"name": "row1"},
 }
 EXPECTED_FILES = {
-    "row1/files/IV_Volts.txt": VOLTAGE,
-    "row1/files/IV_Amps.txt": CURRENT,
-    "row2/files/IV_Volts.txt": VOLTAGE,
-    "row2/files/IV_Amps.txt": CURRENT,
+    "row1/files/IV_Volts.txt": VOLTAGE_LINES[0] + VOLTAGE_LINES[1],
+    "row1/files/IV_Amps.txt": CURRENT_LINES[0] + CURRENT_LINES[1],
+    "row2/files/IV_Volts.txt": VOLTAGE_LINES[0] + VOLTAGE_LINES[2],
+    "row2/files/IV_Amps.txt": CURRENT_LINES[0] + CURRENT_LINES[2],
 }
 
 
@@ -40,3 +42,12 @@ def test_dc_iv_instrument(tmp_path):
         measurement.pop("sample")
         measurement_document = {**measurement, "_sample": {"_id": "sample"}}
         esse.validate(measurement_document, esse.get_schema_by_id("measurement"))
+
+
+def test_write_with_sample_json(tmp_path):
+    data_folder = shutil.copytree(DATA_FOLDER, tmp_path / "data")
+    (data_folder / "sample.json").write_text(json.dumps(SAMPLE_METADATA))
+    MeasurementSetParser(data_folder, WORKFLOW, format="instruments.dc_iv_instrument").write(tmp_path / "folder")
+    measurements = [json.loads(path.read_text()) for path in (tmp_path / "folder").glob("*/measurement.json")]
+
+    assert [measurement["sample"]["metadata"] for measurement in measurements] == [SAMPLE_METADATA, SAMPLE_METADATA]
