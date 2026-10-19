@@ -27,7 +27,7 @@ class MeasurementSetParser(BaseParser):
         return ParserFactory.get_class_by_name(parser_name)(self.content, self.workflow, version=self.version)
 
     def write(self, folder):
-        """Writes set.json, <measurement>/measurement.json and <measurement>/files/ into the folder."""
+        """Writes set.json, <measurement>/measurement.json and <measurement>/files/; returns the measurement count."""
         content = self.pre_parser.parse()["content"]
         folder = Path(folder)
         folder.mkdir(parents=True, exist_ok=True)
@@ -39,3 +39,4 @@ class MeasurementSetParser(BaseParser):
                 destination = folder / name / "files" / relative_path
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(source, destination)
+        return len(content["measurements"])

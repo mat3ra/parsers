@@ -44,6 +44,7 @@ all = ["mat3ra-parsers[dev,tests]"]
 # Entrypoint scripts can be defined here, see examples below.
 [project.scripts]
 # my-script = "my_package.my_module:my_function"
+mat3ra-parse = "mat3ra.parsers.cli.parse:main"
 
 
 [build-system]
