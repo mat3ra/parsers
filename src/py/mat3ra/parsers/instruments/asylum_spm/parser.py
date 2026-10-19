@@ -91,9 +91,16 @@ class AsylumSpmParser(BaseParser):
                 "instrument": {"name": "Asylum Research"},
                 "session": summary["run"],
                 "settings": {
-                    group: settings
-                    for group, settings in entries[0]["achieved"].items()
-                    if group not in ("stage_position", "probe_position")
+                    **{
+                        group: settings
+                        for group, settings in entries[0]["achieved"].items()
+                        if group not in ("stage_position", "probe_position")
+                    },
+                    "pfm_excitation": {
+                        key: value
+                        for key, value in entries[0]["achieved"]["pfm_excitation"].items()
+                        if key != "drive_frequency_hz"
+                    },
                 },
                 "points": [
                     {
@@ -105,10 +112,7 @@ class AsylumSpmParser(BaseParser):
                     for entry in entries
                 ],
             },
-            "workflow": {
-                **self.workflow,
-                "metadata": {**self.workflow.get("metadata", {}), "per_site": summary["recipe"]["per_site"]},
-            },
+            "workflow": {**self.workflow, "metadata": {"per_site": summary["recipe"]["per_site"]}},
             "sample": {"name": label, "metadata": {"position": entries[0]["achieved"]["stage_position"]}},
             **({"properties": [property_document]} if property_document else {}),
         }

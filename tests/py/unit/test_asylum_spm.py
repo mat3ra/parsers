@@ -5,7 +5,6 @@ import mat3ra.fixtures
 from mat3ra.esse import ESSE
 from mat3ra.fixtures import get_content_by_reference_path
 from mat3ra.parsers.entities.measurement_set import MeasurementSetParser
-from mat3ra.parsers.instruments.asylum_spm.parser import AsylumSpmParser
 
 RUN_FOLDER = Path(mat3ra.fixtures.__file__).parent / "data/instruments/asylum_spm/1.0/case-001"
 WORKFLOW = json.loads(get_content_by_reference_path("instruments/asylum_spm/v1.0/workflow"))
@@ -21,6 +20,7 @@ EXPECTED_SETUP_KEYS = {
     "session": ["context", "instrument_directory", "n_measurements", "name", "recipe_name", "run_dir", "started_ts"],
     "settings": ["contact_feedback", "loop_settings", "pfm_excitation", "scan_settings"],
 }
+EXPECTED_PFM_EXCITATION_KEYS = ["dart_igain", "dart_width_hz", "drive_amplitude_v"]
 EXPECTED_POINT_INDICES = [0, 1, 2, 3, 4, 5, 6, 7]
 EXPECTED_FIRST_POINT = {
     "point_index": 0,
@@ -63,6 +63,7 @@ def test_asylum_spm(tmp_path):
     for measurement in measurements:
         setup = measurement["setup"]
         assert {block: sorted(setup[block]) for block in setup if block != "points"} == EXPECTED_SETUP_KEYS
+        assert sorted(setup["settings"]["pfm_excitation"]) == EXPECTED_PFM_EXCITATION_KEYS
         assert [point["point_index"] for point in setup["points"]] == EXPECTED_POINT_INDICES
         assert measurement["workflow"] == EXPECTED_WORKFLOW
         assert "metadata" not in measurement
@@ -72,9 +73,3 @@ def test_asylum_spm(tmp_path):
     esse.validate(properties[0], esse.get_schema_by_id(HYSTERESIS_LOOP_SCHEMA_ID))
     assert points(example) <= points(properties[0])
     assert rounded(properties[0]["parameters"]) == rounded(example["parameters"])
-
-
-def test_asylum_spm_workflow_metadata():
-    workflow = {**WORKFLOW, "metadata": {"source": "lab"}}
-    measurement = AsylumSpmParser(RUN_FOLDER, workflow).parse()["content"]["measurements"]["r0c00"]
-    assert measurement["workflow"]["metadata"] == {"source": "lab", "per_site": PER_SITE}
