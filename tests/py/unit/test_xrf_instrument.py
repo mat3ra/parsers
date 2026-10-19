@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 
 import mat3ra.fixtures
@@ -11,6 +12,7 @@ GRID_PATH = (
 )
 GRID_LINES = get_content_by_reference_path("instruments/xrf_instrument/v1.0/grid").splitlines(keepends=True)
 WORKFLOW = json.loads(get_content_by_reference_path("instruments/xrf_instrument/v1.0/workflow"))
+SAMPLE_METADATA = {"pad": {"shape": "circle", "size": {"radius": 0.25, "units": "mm"}}}
 EXPECTED_MEASUREMENT_NAMES = ["com5_1448_xrf_grid r1c1", "com5_1448_xrf_grid r1c2"]
 EXPECTED_FIRST_SITE = {
     "name": "com5_1448_xrf_grid r1c1",
@@ -39,3 +41,12 @@ def test_xrf_instrument(tmp_path):
         measurement.pop("sample")
         measurement_document = {**measurement, "_sample": {"_id": "sample"}}
         esse.validate(measurement_document, esse.get_schema_by_id("measurement"))
+
+
+def test_write_with_sample_json(tmp_path):
+    grid_path = shutil.copy(GRID_PATH, tmp_path)
+    (tmp_path / "sample.json").write_text(json.dumps(SAMPLE_METADATA))
+    MeasurementSetParser(grid_path, WORKFLOW, format="instruments.xrf_instrument").write(tmp_path / "folder")
+    sample = json.loads((tmp_path / "folder/r1c1/measurement.json").read_text())["sample"]
+
+    assert sample["metadata"] == {**EXPECTED_FIRST_SITE["sample"]["metadata"], **SAMPLE_METADATA}

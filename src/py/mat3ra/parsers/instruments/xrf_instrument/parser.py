@@ -21,7 +21,7 @@ class XrfInstrumentParser(BaseParser):
     def parse(self):
         """Returns {"content": {"set", "measurements", "files"}, "version"}."""
         grid = Path(self.content)
-        lines = grid.read_text().splitlines(keepends=True)
+        lines = grid.read_bytes().decode().splitlines(keepends=True)
         measurements, files = {}, {}
         for line, row in zip(lines[1:], csv.DictReader(lines, delimiter="\t")):
             label = f"r{row['Row']}c{row['Column']}"
