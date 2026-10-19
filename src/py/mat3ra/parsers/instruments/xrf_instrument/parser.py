@@ -4,14 +4,14 @@ from pathlib import Path
 from mat3ra.parsers import BaseParser
 
 
-class XrfInstrumentMapParser(BaseParser):
+class XrfInstrumentParser(BaseParser):
     """
     XRF grid parser: a tab-separated table, one measurement per row.
 
     Args:
         content (str or Path): grid table path.
         workflow (dict): workflow document of the measurements.
-        version (str): application version.
+        version (str): instrument version.
     """
 
     def __init__(self, content, workflow, version: str = "1.0"):

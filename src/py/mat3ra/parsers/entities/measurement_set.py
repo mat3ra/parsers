@@ -13,8 +13,8 @@ class MeasurementSetParser(BaseParser):
     Args:
         content (str or Path): path to the delivered output: a run folder, a table or a data folder.
         workflow (dict): workflow document of the measurements.
-        format (str): application parser, e.g. applications.asylum_spm.loop.
-        version (str): application version.
+        format (str): instrument parser, e.g. instruments.asylum_spm.
+        version (str): instrument version.
     """
 
     def __init__(self, content, workflow, format: str = "", version: str = ""):

@@ -39,6 +39,10 @@ tests = [
     "pytest",
     "pytest-cov",
 ]
+alphafilm = [
+    "mat3ra-api-client @ git+https://github.com/mat3ra/api-client.git@alphafilm",
+    "mat3ra-fixtures @ git+https://github.com/mat3ra/fixtures.git@alphafilm",
+]
 all = ["mat3ra-parsers[dev,tests]"]
 
 # Entrypoint scripts can be defined here, see examples below.

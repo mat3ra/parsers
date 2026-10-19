@@ -3,14 +3,14 @@ from pathlib import Path
 from mat3ra.parsers import BaseParser
 
 
-class DcIvInstrumentSweepParser(BaseParser):
+class DcIvInstrumentParser(BaseParser):
     """
     DC I-V parser: a folder with IV_Volts.txt and IV_Amps.txt, one measurement per sweep row.
 
     Args:
         content (str or Path): data folder path.
         workflow (dict): workflow document of the measurements.
-        version (str): application version.
+        version (str): instrument version.
     """
 
     def __init__(self, content, workflow, version: str = "1.0"):

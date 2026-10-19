@@ -12,14 +12,14 @@ def parameter_statistics(parameters_per_loop, key):
     return {"value": float(numpy.mean(values)), "standardDeviation": float(numpy.std(values)), "count": len(values)}
 
 
-class AsylumSpmLoopParser(BaseParser):
+class AsylumSpmParser(BaseParser):
     """
     Asylum Research run folder parser: summary.json and loops/<point>/*.npy, one measurement per pad.
 
     Args:
         content (str or Path): run folder path.
         workflow (dict): workflow document of the measurements.
-        version (str): application version.
+        version (str): instrument version.
     """
 
     def __init__(self, content, workflow, version: str = "1.0"):

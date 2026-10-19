@@ -6,8 +6,8 @@ from mat3ra.esse import ESSE
 from mat3ra.fixtures import get_content_by_reference_path
 from mat3ra.parsers.entities.measurement_set import MeasurementSetParser
 
-RUN_FOLDER = Path(mat3ra.fixtures.__file__).parent / "data/applications/asylum_spm/1.0/case-001"
-WORKFLOW = json.loads(get_content_by_reference_path("applications/asylum_spm/v1.0/workflow"))
+RUN_FOLDER = Path(mat3ra.fixtures.__file__).parent / "data/instruments/asylum_spm/1.0/case-001"
+WORKFLOW = json.loads(get_content_by_reference_path("instruments/asylum_spm/v1.0/workflow"))
 EXPECTED_COUNTS = {"measurements": 2, "properties": 1, "files": 48}
 EXPECTED_FILE_FOLDERS = {"r0c00/files/loops"}
 EXPECTED_DESCRIPTIONS = [
@@ -40,7 +40,7 @@ def points(property_document):
 def test_asylum_spm_loop(tmp_path):
     tmp_path = tmp_path / "folder"
     esse = ESSE()
-    MeasurementSetParser(RUN_FOLDER, WORKFLOW, format="applications.asylum_spm.loop").write(tmp_path)
+    MeasurementSetParser(RUN_FOLDER, WORKFLOW, format="instruments.asylum_spm").write(tmp_path)
     measurements = [json.loads(path.read_text()) for path in sorted(tmp_path.glob("*/measurement.json"))]
     properties = [document for measurement in measurements for document in measurement.get("properties", [])]
     example = next(item["data"] for item in esse.wrapped_examples if item["path"] == HYSTERESIS_LOOP_EXAMPLE_PATH)
