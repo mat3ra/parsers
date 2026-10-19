@@ -10,6 +10,8 @@ A dual repository (JavaScript and Python) containing parsers.
 - `xrf-instrument`: an XRF grid table, one row per site
 - `dc-iv-instrument`: a folder with `IV_Volts.txt` and `IV_Amps.txt`
 
+The install needs Python 3.10+, git and git-lfs (`git lfs install` once); without git-lfs the example data and workflows arrive as pointer files.
+
 ```bash
 pip install "mat3ra-parsers[alphafilm] @ git+https://github.com/mat3ra/parsers.git@alphafilm"
 mat3ra-parse asylum-spm <run folder> <output folder>

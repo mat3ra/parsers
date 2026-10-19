@@ -37,7 +37,7 @@ def points(property_document):
     return set(zip(*rounded([property_document["xDataArray"], *property_document["yDataSeries"]])))
 
 
-def test_asylum_spm_loop(tmp_path):
+def test_asylum_spm(tmp_path):
     tmp_path = tmp_path / "folder"
     esse = ESSE()
     MeasurementSetParser(RUN_FOLDER, WORKFLOW, format="instruments.asylum_spm").write(tmp_path)

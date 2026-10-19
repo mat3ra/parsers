@@ -22,7 +22,7 @@ EXPECTED_FIRST_SITE = {
 EXPECTED_FILES = {"r1c1/files/com5_1448_xrf_grid.txt": GRID, "r1c2/files/com5_1448_xrf_grid.txt": GRID}
 
 
-def test_xrf_instrument_map(tmp_path):
+def test_xrf_instrument(tmp_path):
     tmp_path = tmp_path / "folder"
     esse = ESSE()
     MeasurementSetParser(GRID_PATH, WORKFLOW, format="instruments.xrf_instrument").write(tmp_path)

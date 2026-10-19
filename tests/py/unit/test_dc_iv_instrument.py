@@ -26,7 +26,7 @@ EXPECTED_FILES = {
 }
 
 
-def test_dc_iv_instrument_sweep(tmp_path):
+def test_dc_iv_instrument(tmp_path):
     tmp_path = tmp_path / "folder"
     esse = ESSE()
     MeasurementSetParser(DATA_FOLDER, WORKFLOW, format="instruments.dc_iv_instrument").write(tmp_path)
