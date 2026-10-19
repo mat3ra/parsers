@@ -95,19 +95,22 @@ class AsylumSpmParser(BaseParser):
                     for group, settings in entries[0]["achieved"].items()
                     if group not in ("stage_position", "probe_position")
                 },
-            },
-            "workflow": self.workflow,
-            "sample": {"name": label, "metadata": {"position": entries[0]["achieved"]["stage_position"]}},
-            **({"properties": [property_document]} if property_document else {}),
-            "metadata": {
-                "measurements": [
+                "points": [
                     {
-                        **entry,
-                        "achieved": {key: value for key, value in entry["achieved"].items() if key != "stage_position"},
+                        "point_index": entry["labels"]["point_index"],
+                        "probe_position": entry["achieved"]["probe_position"],
+                        "drive_frequency_hz": entry["achieved"]["pfm_excitation"]["drive_frequency_hz"],
+                        "file_path": entry["file_path"],
                     }
                     for entry in entries
-                ]
+                ],
             },
+            "workflow": {
+                **self.workflow,
+                "metadata": {**self.workflow.get("metadata", {}), "per_site": summary["recipe"]["per_site"]},
+            },
+            "sample": {"name": label, "metadata": {"position": entries[0]["achieved"]["stage_position"]}},
+            **({"properties": [property_document]} if property_document else {}),
         }
 
     def parse(self):
