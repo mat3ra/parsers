@@ -8,7 +8,7 @@ class DcIvInstrumentSweepParser(BaseParser):
     DC I-V parser: a folder with IV_Volts.txt and IV_Amps.txt, one measurement per sweep row.
 
     Args:
-        content (str): data folder path.
+        content (str or Path): data folder path.
         workflow (dict): workflow document of the measurements.
         version (str): application version.
     """
@@ -18,6 +18,7 @@ class DcIvInstrumentSweepParser(BaseParser):
         self.workflow = workflow
 
     def parse(self):
+        """Returns {"content": {"set", "measurements", "files"}, "version"}."""
         data_folder = Path(self.content)
         voltage_lines = (data_folder / "IV_Volts.txt").read_text().splitlines()[1:]
         measurements, files = {}, {}
@@ -31,6 +32,6 @@ class DcIvInstrumentSweepParser(BaseParser):
                 "workflow": self.workflow,
                 "sample": {"name": label},
             }
-            files[label] = {file_name: data_folder / file_name for file_name in ("IV_Volts.txt", "IV_Amps.txt")}
+            files[label] = {file_name: str(data_folder / file_name) for file_name in ("IV_Volts.txt", "IV_Amps.txt")}
         set_document = {"name": data_folder.name, "description": "", "metadata": {}}
         return {"content": {"set": set_document, "measurements": measurements, "files": files}, "version": self.version}

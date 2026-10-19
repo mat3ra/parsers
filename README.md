@@ -2,7 +2,7 @@
 
 A dual repository (JavaScript and Python) containing parsers.
 
-## Measurements
+## 1. Measurements
 
 `MeasurementSetParser` writes the folder `mat3ra-upload` takes (`set.json`, `<measurement>/measurement.json`, `<measurement>/files/`) from an instrument's output and the workflow document of its measurements. `format` names the application:
 

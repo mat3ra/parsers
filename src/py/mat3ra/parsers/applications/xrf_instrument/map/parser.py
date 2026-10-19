@@ -9,7 +9,7 @@ class XrfInstrumentMapParser(BaseParser):
     XRF grid parser: a tab-separated table, one measurement per row.
 
     Args:
-        content (str): grid table path.
+        content (str or Path): grid table path.
         workflow (dict): workflow document of the measurements.
         version (str): application version.
     """
@@ -19,6 +19,7 @@ class XrfInstrumentMapParser(BaseParser):
         self.workflow = workflow
 
     def parse(self):
+        """Returns {"content": {"set", "measurements", "files"}, "version"}."""
         grid = Path(self.content)
         measurements, files = {}, {}
         for row in csv.DictReader(grid.read_text().splitlines(), delimiter="\t"):
@@ -32,6 +33,6 @@ class XrfInstrumentMapParser(BaseParser):
                 "workflow": self.workflow,
                 "sample": {"name": label, "metadata": {"position": position}},
             }
-            files[label] = {grid.name: grid}
+            files[label] = {grid.name: str(grid)}
         set_document = {"name": grid.stem, "description": "", "metadata": {}}
         return {"content": {"set": set_document, "measurements": measurements, "files": files}, "version": self.version}

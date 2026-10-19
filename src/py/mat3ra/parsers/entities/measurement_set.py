@@ -11,7 +11,7 @@ class MeasurementSetParser(BaseParser):
     Measurement set parser class: turns an instrument's delivered output into the folder mat3ra-upload reads.
 
     Args:
-        content (str): path to the delivered output: a run folder, a table or a data folder.
+        content (str or Path): path to the delivered output: a run folder, a table or a data folder.
         workflow (dict): workflow document of the measurements.
         format (str): application parser, e.g. applications.asylum_spm.loop.
         version (str): application version.
@@ -27,7 +27,7 @@ class MeasurementSetParser(BaseParser):
         return ParserFactory.get_class_by_name(parser_name)(self.content, self.workflow, version=self.version)
 
     def write(self, folder):
-        """Writes set.json and, per measurement, <measurement>/measurement.json and <measurement>/files/ into the folder."""
+        """Writes set.json, <measurement>/measurement.json and <measurement>/files/ into the folder."""
         content = self.pre_parser.parse()["content"]
         folder = Path(folder)
         folder.mkdir(parents=True, exist_ok=True)
