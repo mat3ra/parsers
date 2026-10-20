@@ -7,8 +7,8 @@ A dual repository (JavaScript and Python) containing parsers.
 `mat3ra-parse` writes the folder `mat3ra-upload` takes (`set.json`, `<measurement>/measurement.json`, `<measurement>/files/`) from an instrument's output, with the instrument's example workflow from mat3ra-fixtures. Instruments:
 
 - `asylum-spm`: an Asylum Research run folder (`summary.json`, `loops/<point>/*.npy`)
-- `xrf-instrument`: an XRF grid table, one row per site
-- `dc-iv-instrument`: a folder with `IV_Volts.txt` and `IV_Amps.txt`
+- `xrf-instrument`: an XRF table, one row per site
+- `dc-iv-instrument`: a folder with `IV_Volts.txt`, `IV_Amps.txt` and `IV_Positions.txt`
 
 A `sample.json` in the input folder (for a table, beside it) is merged, as it is, into every sample's `metadata`.
 

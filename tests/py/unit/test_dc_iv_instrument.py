@@ -10,19 +10,19 @@ DATA_FOLDER = Path(mat3ra.fixtures.__file__).parent / "data/instruments/dc_iv_in
 VOLTAGE_LINES = get_content_by_reference_path("instruments/dc_iv_instrument/v1.0/voltage").splitlines(keepends=True)
 CURRENT_LINES = get_content_by_reference_path("instruments/dc_iv_instrument/v1.0/current").splitlines(keepends=True)
 WORKFLOW = json.loads(get_content_by_reference_path("instruments/dc_iv_instrument/v1.0/workflow"))
-EXPECTED_MEASUREMENT_NAMES = ["1448 DC IV data row1", "1448 DC IV data row2"]
+EXPECTED_MEASUREMENT_NAMES = ["1448 DC IV data r1c1", "1448 DC IV data r1c2"]
 EXPECTED_FIRST_ROW = {
-    "name": "1448 DC IV data row1",
-    "description": "DC I-V Sweep at row1",
+    "name": "1448 DC IV data r1c1",
+    "description": "DC I-V Sweep at r1c1",
     "status": "finished",
     "setup": {"instrument": {}},
-    "sample": {"name": "row1"},
+    "sample": {"name": "r1c1"},
 }
 EXPECTED_FILES = {
-    "row1/files/IV_Volts.txt": VOLTAGE_LINES[0] + VOLTAGE_LINES[1],
-    "row1/files/IV_Amps.txt": CURRENT_LINES[0] + CURRENT_LINES[1],
-    "row2/files/IV_Volts.txt": VOLTAGE_LINES[0] + VOLTAGE_LINES[2],
-    "row2/files/IV_Amps.txt": CURRENT_LINES[0] + CURRENT_LINES[2],
+    "r1c1/files/IV_Volts.txt": VOLTAGE_LINES[0] + VOLTAGE_LINES[1],
+    "r1c1/files/IV_Amps.txt": CURRENT_LINES[0] + CURRENT_LINES[1],
+    "r1c2/files/IV_Volts.txt": VOLTAGE_LINES[0] + VOLTAGE_LINES[2],
+    "r1c2/files/IV_Amps.txt": CURRENT_LINES[0] + CURRENT_LINES[2],
 }
 
 

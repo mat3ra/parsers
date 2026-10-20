@@ -7,30 +7,30 @@ from mat3ra.esse import ESSE
 from mat3ra.fixtures import get_content_by_reference_path
 from mat3ra.parsers.entities.measurement_set import MeasurementSetParser
 
-GRID_PATH = (
+TABLE_PATH = (
     Path(mat3ra.fixtures.__file__).parent / "data/instruments/xrf_instrument/1.0/case-001/com5_1448_xrf_grid.txt"
 )
-GRID_LINES = get_content_by_reference_path("instruments/xrf_instrument/v1.0/grid").splitlines(keepends=True)
+TABLE_LINES = get_content_by_reference_path("instruments/xrf_instrument/v1.0/table").splitlines(keepends=True)
 WORKFLOW = json.loads(get_content_by_reference_path("instruments/xrf_instrument/v1.0/workflow"))
-SAMPLE_METADATA = {"pad": {"shape": "circle", "size": {"radius": 0.25, "units": "mm"}}}
+SAMPLE_METADATA = {"label": "example"}
 EXPECTED_MEASUREMENT_NAMES = ["com5_1448_xrf_grid r1c1", "com5_1448_xrf_grid r1c2"]
 EXPECTED_FIRST_SITE = {
     "name": "com5_1448_xrf_grid r1c1",
-    "description": "XRF Grid Map at site r1c1",
+    "description": "XRF Thickness and Composition at site r1c1",
     "status": "finished",
     "setup": {"instrument": {}},
     "sample": {"name": "r1c1", "metadata": {"position": {"coordinates": [5.4000001, 6.6500001], "units": "mm"}}},
 }
 EXPECTED_FILES = {
-    "r1c1/files/com5_1448_xrf_grid.txt": GRID_LINES[0] + GRID_LINES[1],
-    "r1c2/files/com5_1448_xrf_grid.txt": GRID_LINES[0] + GRID_LINES[2],
+    "r1c1/files/com5_1448_xrf_grid.txt": TABLE_LINES[0] + TABLE_LINES[1],
+    "r1c2/files/com5_1448_xrf_grid.txt": TABLE_LINES[0] + TABLE_LINES[2],
 }
 
 
 def test_xrf_instrument(tmp_path):
     tmp_path = tmp_path / "folder"
     esse = ESSE()
-    MeasurementSetParser(GRID_PATH, WORKFLOW, format="instruments.xrf_instrument").write(tmp_path)
+    MeasurementSetParser(TABLE_PATH, WORKFLOW, format="instruments.xrf_instrument").write(tmp_path)
     measurements = [json.loads(path.read_text()) for path in sorted(tmp_path.glob("*/measurement.json"))]
 
     assert [measurement["name"] for measurement in measurements] == EXPECTED_MEASUREMENT_NAMES
@@ -44,9 +44,9 @@ def test_xrf_instrument(tmp_path):
 
 
 def test_write_with_sample_json(tmp_path):
-    grid_path = shutil.copy(GRID_PATH, tmp_path)
+    table_path = shutil.copy(TABLE_PATH, tmp_path)
     (tmp_path / "sample.json").write_text(json.dumps(SAMPLE_METADATA))
-    MeasurementSetParser(grid_path, WORKFLOW, format="instruments.xrf_instrument").write(tmp_path / "folder")
+    MeasurementSetParser(table_path, WORKFLOW, format="instruments.xrf_instrument").write(tmp_path / "folder")
     sample = json.loads((tmp_path / "folder/r1c1/measurement.json").read_text())["sample"]
 
     assert sample["metadata"] == {**EXPECTED_FIRST_SITE["sample"]["metadata"], **SAMPLE_METADATA}

@@ -83,6 +83,8 @@ class AsylumSpmParser(BaseParser):
         loop_count = sum(loop_counts.values())
         loops_per_condition = ", ".join(f"{count} {condition}-field" for condition, count in loop_counts.items())
         loops = f"{loop_count} {kind}s ({loops_per_condition})" if loop_count else f"no {kind}s"
+        stage_position = entries[0]["achieved"]["stage_position"]
+        position = {"coordinates": [stage_position["x_stage_m"], stage_position["y_stage_m"]], "units": "m"}
         return {
             "name": f"{summary['run']['name']} {label}",
             "description": f"{technique} at site {label}, {loops}",
@@ -113,7 +115,7 @@ class AsylumSpmParser(BaseParser):
                 ],
             },
             "workflow": {**self.workflow, "metadata": {"per_site": summary["recipe"]["per_site"]}},
-            "sample": {"name": label, "metadata": {"position": entries[0]["achieved"]["stage_position"]}},
+            "sample": {"name": label, "metadata": {"position": position}},
             **({"properties": [property_document]} if property_document else {}),
         }
 

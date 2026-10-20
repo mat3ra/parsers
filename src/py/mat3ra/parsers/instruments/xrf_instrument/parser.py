@@ -6,10 +6,10 @@ from mat3ra.parsers import BaseParser
 
 class XrfInstrumentParser(BaseParser):
     """
-    XRF grid parser: a tab-separated table, one measurement per row.
+    XRF parser: a tab-separated table, one measurement per row.
 
     Args:
-        content (str or Path): grid table path.
+        content (str or Path): table path.
         workflow (dict): workflow document of the measurements.
         version (str): instrument version.
     """
@@ -20,20 +20,20 @@ class XrfInstrumentParser(BaseParser):
 
     def parse(self):
         """Returns {"content": {"set", "measurements", "files"}, "version"}."""
-        grid = Path(self.content)
-        lines = grid.read_bytes().decode().splitlines(keepends=True)
+        table = Path(self.content)
+        lines = table.read_bytes().decode().splitlines(keepends=True)
         measurements, files = {}, {}
         for line, row in zip(lines[1:], csv.DictReader(lines, delimiter="\t")):
             label = f"r{row['Row']}c{row['Column']}"
             position = {"coordinates": [float(row["x_mm"]), float(row["y_mm"])], "units": "mm"}
             measurements[label] = {
-                "name": f"{grid.stem} {label}",
+                "name": f"{table.stem} {label}",
                 "description": f"{self.workflow['name']} at site {label}",
                 "status": "finished",
                 "setup": {"instrument": {}},
                 "workflow": self.workflow,
                 "sample": {"name": label, "metadata": {"position": position}},
             }
-            files[label] = {grid.name: [lines[0], line]}
-        set_document = {"name": grid.stem, "description": "", "metadata": {}}
+            files[label] = {table.name: [lines[0], line]}
+        set_document = {"name": table.stem, "description": "", "metadata": {}}
         return {"content": {"set": set_document, "measurements": measurements, "files": files}, "version": self.version}

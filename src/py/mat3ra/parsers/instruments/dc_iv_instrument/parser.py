@@ -1,3 +1,4 @@
+import csv
 from pathlib import Path
 
 from mat3ra.parsers import BaseParser
@@ -5,7 +6,7 @@ from mat3ra.parsers import BaseParser
 
 class DcIvInstrumentParser(BaseParser):
     """
-    DC I-V parser: a folder with IV_Volts.txt and IV_Amps.txt, one measurement per sweep row.
+    DC I-V parser: a folder with IV_Volts.txt, IV_Amps.txt and IV_Positions.txt, one measurement per sweep row.
 
     Args:
         content (str or Path): data folder path.
@@ -24,9 +25,12 @@ class DcIvInstrumentParser(BaseParser):
             name: (data_folder / name).read_bytes().decode().splitlines(keepends=True)
             for name in ("IV_Volts.txt", "IV_Amps.txt")
         }
+        positions = csv.DictReader(
+            (data_folder / "IV_Positions.txt").read_bytes().decode().splitlines(), delimiter="\t"
+        )
         measurements, files = {}, {}
-        for row_number in range(1, len(lines_by_file["IV_Volts.txt"])):
-            label = f"row{row_number}"
+        for row_number, position in enumerate(positions, start=1):
+            label = f"r{position['Row']}c{position['Column']}"
             measurements[label] = {
                 "name": f"{data_folder.name} {label}",
                 "description": f"{self.workflow['name']} at {label}",
