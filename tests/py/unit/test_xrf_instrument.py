@@ -7,9 +7,7 @@ from mat3ra.esse import ESSE
 from mat3ra.fixtures import get_content_by_reference_path
 from mat3ra.parsers.entities.measurement_set import MeasurementSetParser
 
-TABLE_PATH = (
-    Path(mat3ra.fixtures.__file__).parent / "data/instruments/xrf_instrument/1.0/case-001/com5_1448_xrf_grid.txt"
-)
+DATA_FOLDER = Path(mat3ra.fixtures.__file__).parent / "data/instruments/xrf_instrument/1.0/case-001/com5_1448_xrf_grid"
 TABLE_LINES = get_content_by_reference_path("instruments/xrf_instrument/v1.0/table").splitlines(keepends=True)
 WORKFLOW = json.loads(get_content_by_reference_path("instruments/xrf_instrument/v1.0/workflow"))
 SAMPLE_METADATA = {"label": "example"}
@@ -30,7 +28,7 @@ EXPECTED_FILES = {
 def test_xrf_instrument(tmp_path):
     tmp_path = tmp_path / "folder"
     esse = ESSE()
-    MeasurementSetParser(TABLE_PATH, WORKFLOW, format="instruments.xrf_instrument").write(tmp_path)
+    MeasurementSetParser(DATA_FOLDER, WORKFLOW, format="instruments.xrf_instrument").write(tmp_path)
     measurements = [json.loads(path.read_text()) for path in sorted(tmp_path.glob("*/measurement.json"))]
 
     assert [measurement["name"] for measurement in measurements] == EXPECTED_MEASUREMENT_NAMES
@@ -44,9 +42,9 @@ def test_xrf_instrument(tmp_path):
 
 
 def test_write_with_sample_json(tmp_path):
-    table_path = shutil.copy(TABLE_PATH, tmp_path)
-    (tmp_path / "sample.json").write_text(json.dumps(SAMPLE_METADATA))
-    MeasurementSetParser(table_path, WORKFLOW, format="instruments.xrf_instrument").write(tmp_path / "folder")
+    data_folder = shutil.copytree(DATA_FOLDER, tmp_path / DATA_FOLDER.name)
+    (data_folder / "sample.json").write_text(json.dumps(SAMPLE_METADATA))
+    MeasurementSetParser(data_folder, WORKFLOW, format="instruments.xrf_instrument").write(tmp_path / "folder")
     sample = json.loads((tmp_path / "folder/r1c1/measurement.json").read_text())["sample"]
 
     assert sample["metadata"] == {**EXPECTED_FIRST_SITE["sample"]["metadata"], **SAMPLE_METADATA}
