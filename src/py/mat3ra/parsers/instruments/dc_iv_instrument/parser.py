@@ -20,7 +20,7 @@ class DcIvInstrumentParser(BaseParser):
 
     def parse(self):
         """Returns {"content": {"set", "measurements", "files"}, "version"}."""
-        data_folder = Path(self.content)
+        data_folder = Path(self.content).resolve()
         lines_by_file = {
             name: (data_folder / name).read_bytes().decode().splitlines(keepends=True)
             for name in ("IV_Volts.txt", "IV_Amps.txt")

@@ -20,7 +20,7 @@ class XrfInstrumentParser(BaseParser):
 
     def parse(self):
         """Returns {"content": {"set", "measurements", "files"}, "version"}."""
-        data_folder = Path(self.content)
+        data_folder = Path(self.content).resolve()
         [table] = data_folder.glob("*.txt")
         lines = table.read_bytes().decode().splitlines(keepends=True)
         measurements, files = {}, {}
