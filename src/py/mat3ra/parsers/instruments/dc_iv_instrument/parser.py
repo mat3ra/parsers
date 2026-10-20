@@ -25,15 +25,16 @@ class DcIvInstrumentParser(BaseParser):
             name: (data_folder / name).read_bytes().decode().splitlines(keepends=True)
             for name in ("IV_Volts.txt", "IV_Amps.txt")
         }
-        positions = csv.DictReader(
-            (data_folder / "IV_Positions.txt").read_bytes().decode().splitlines(), delimiter="\t"
+        positions = list(
+            csv.DictReader((data_folder / "IV_Positions.txt").read_bytes().decode().splitlines(), delimiter="\t")
         )
         measurements, files = {}, {}
-        for row_number, position in enumerate(positions, start=1):
+        for row_number in range(1, len(lines_by_file["IV_Volts.txt"])):
+            position = positions[row_number - 1]
             label = f"r{position['Row']}c{position['Column']}"
             measurements[label] = {
                 "name": f"{data_folder.name} {label}",
-                "description": f"{self.workflow['name']} at {label}",
+                "description": f"{self.workflow['name']} at site {label}",
                 "status": "finished",
                 "setup": {"instrument": {}},
                 "workflow": self.workflow,

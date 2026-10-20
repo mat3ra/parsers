@@ -13,7 +13,7 @@ WORKFLOW = json.loads(get_content_by_reference_path("instruments/dc_iv_instrumen
 EXPECTED_MEASUREMENT_NAMES = ["1448 DC IV data r1c1", "1448 DC IV data r1c2"]
 EXPECTED_FIRST_ROW = {
     "name": "1448 DC IV data r1c1",
-    "description": "DC I-V Sweep at r1c1",
+    "description": "DC I-V Sweep at site r1c1",
     "status": "finished",
     "setup": {"instrument": {}},
     "sample": {"name": "r1c1"},

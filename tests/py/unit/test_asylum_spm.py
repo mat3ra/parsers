@@ -28,6 +28,10 @@ EXPECTED_FIRST_POINT = {
     "drive_frequency_hz": 369811.38,
     "file_path": "C:\\Users\\Asylum User\\Documents\\Asylum Research Data\\260831\\Image0231.ibw",
 }
+EXPECTED_FIRST_SAMPLE = {
+    "name": "r0c00",
+    "metadata": {"position": {"coordinates": [0.021064, 0.020812999], "units": "m"}},
+}
 EXPECTED_WORKFLOW = {**WORKFLOW, "metadata": {"per_site": PER_SITE}}
 HYSTERESIS_LOOP_SCHEMA_ID = "properties-directory/non-scalar/hysteresis-loop"
 HYSTERESIS_LOOP_EXAMPLE_PATH = "properties_directory/non-scalar/hysteresis_loop"
@@ -60,6 +64,7 @@ def test_asylum_spm(tmp_path):
     assert {path.parent.parent.relative_to(tmp_path).as_posix() for path in files} == EXPECTED_FILE_FOLDERS
     assert [measurement["description"] for measurement in measurements] == EXPECTED_DESCRIPTIONS
     assert measurements[0]["setup"]["points"][0] == EXPECTED_FIRST_POINT
+    assert measurements[0]["sample"] == EXPECTED_FIRST_SAMPLE
     for measurement in measurements:
         setup = measurement["setup"]
         assert {block: sorted(setup[block]) for block in setup if block != "points"} == EXPECTED_SETUP_KEYS
